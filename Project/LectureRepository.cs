@@ -3,76 +3,74 @@ using System.Collections.Generic;
 
 namespace Repositories
 {
-    public class UserRepository
+    public class LectureRepository
     {
         private SqliteConnection _connection;
 
-        public UserRepository(string dataBaseFileName)
+        public LectureRepository(string dataBaseFileName)
         {
             _connection = new SqliteConnection($"Data Source={dataBaseFileName}");
         }    
 
-        public long Insert(User user)
+        public long Insert(Lecture lecture)
         {
             _connection.Open();
             var command = _connection.CreateCommand();
             command.CommandText = 
             @"
-                INSERT INTO users (login, password, fullname)
-                VALUES ($login, $password, $fullname);
+                INSERT INTO lectures (theme, course_id) 
+                VALUES ($theme, $course_id);
                 SELECT last_insert_rowid();
             ";
-            command.Parameters.AddWithValue("$login", user.Login);
-            command.Parameters.AddWithValue("$password", user.Password);
-            command.Parameters.AddWithValue("$fullname", user.Fullname);
-
+            command.Parameters.AddWithValue("$theme", lecture.Theme);
+            command.Parameters.AddWithValue("$course_id", lecture.course.ID);
             long id = (long)command.ExecuteScalar();
             _connection.Close();            
 
             return id;
         }
 
-        public User GetUser(long id)
+        public Lecture GetLection(long id)
         {
             _connection.Open();
             var command = _connection.CreateCommand();
-            command.CommandText = @"SELECT * FROM users WHERE id = $id";
+            command.CommandText = @"
+                SELECT * 
+                FROM lectures
+                WHERE id = $id;
+            ";
             command.Parameters.AddWithValue("$id", id);
             
             SqliteDataReader reader = command.ExecuteReader();
-            User user = new User();
+            Lecture lection = new Lecture(); 
 
             if (reader.Read())
             {
-                user.ID = int.Parse(reader.GetString(0));
-                user.Login = reader.GetString(1);
-                user.Password = reader.GetString(2);
-                user.Fullname = reader.GetString(3);
+                lection.ID = long.Parse(reader.GetString(0));
+                lection.Theme = reader.GetString(1);
             }
 
             reader.Close();
             _connection.Close();
 
-            return user;
+            return lection;
         }
 
-        public bool Update(long ID, User user)
+        public bool Update(long lectureID, Lecture lecture)
         {
             _connection.Open();
             var command = _connection.CreateCommand();
             command.CommandText = 
             @"
-                UPDATE users 
+                UPDATE lectures 
                 SET 
-                login = $login, 
-                password = $password,
-                fullname = $fullname
-                WHERE id = $id;
+                theme = $theme, 
+                course_id = $course_id
+                WHERE id = $id
             ";
-            command.Parameters.AddWithValue("$login", user.Login);
-            command.Parameters.AddWithValue("$password", user.Password);
-            command.Parameters.AddWithValue("$fullname", user.Fullname);
-            command.Parameters.AddWithValue("$id", ID);
+            command.Parameters.AddWithValue("$id", lectureID);
+            command.Parameters.AddWithValue("$theme", lecture.Theme);
+            command.Parameters.AddWithValue("$course_id", lecture.course.ID);
             
             int count = command.ExecuteNonQuery();
             _connection.Close();            
@@ -84,32 +82,38 @@ namespace Repositories
         {
             _connection.Open();
             var command = _connection.CreateCommand();
-            command.CommandText = @"DELETE FROM users WHERE id = $id";
+            command.CommandText = @"DELETE FROM lectures WHERE id = $id";
             command.Parameters.AddWithValue("$id", id);
             int count = command.ExecuteNonQuery();
             _connection.Close();
             
             return count == 1;
         }
-    
-        public List<long> GetAllIDs()
+   
+        public List<Lecture> GetLectionsByCourse(long courseID)
         {
             _connection.Open();
             var command = _connection.CreateCommand();
 
-            command.CommandText = @"SELECT id FROM users";
+            command.CommandText = @"
+                SELECT * FROM lectures
+                WHERE course_id = $id;
+            ";
+            command.Parameters.AddWithValue("$id", courseID);
 
-            List<long> ids = new List<long>();
             var reader = command.ExecuteReader();
+            List<Lecture> lections = new List<Lecture>();
             while (reader.Read())
             {
-                ids.Add(long.Parse(reader.GetString(0)));
+                Lecture lection = new Lecture();
+                lection.ID = long.Parse(reader.GetString(0));
+                lection.Theme = reader.GetString(1);
+                lections.Add(lection);
             }
-
             reader.Close();
             _connection.Close();
 
-            return ids;
+            return lections;
         }
-    }
+   }
 }

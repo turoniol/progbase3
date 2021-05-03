@@ -6,51 +6,34 @@ using Repositories;
 
 public class User
 {
-    public User(string login, string password, string status)
-    {
-        this.Login = login;
-        this.Password = password;
-        this.Status = status;
-
-    }
-    public string Login { get; private set; }
-    public string Password { get; private set; }
-    public string Status { get; private set; }
-
+    public long ID { get; set; }
+    public string Login { get; set; }
+    public string Password { get; set; }
+    public string Fullname { get; set; }
+    public List<Course> Courses { get; set; }
+    public List<Course> OwnCourses { get; set; }
 }
-public class Lection
-{
-    public Lection(string theme)
-    {
-        // this.ID = iD;
-        this.Theme = theme;
 
-    }
-    // public int ID { get; private set; }
-    public string Theme { get; private set; }
+public class Lecture
+{
+    public long ID { get; set; }
+    public string Theme { get; set; }
+
+    public Course course { get; set; }
 }
 
 public class Course
 {
-    // public int ID { get; private set; }
-    public string Author { get; private set; }
-    public string Name { get; private set; }
-    public int NumberOfSubscribers { get; private set; }
-    public int NumberOfLections { get; private set; }
-
-    public Course(string author, string name, int numberOfSubscribers, int numberOfLections)
-    {
-        this.Author = author;
-        this.Name = name;
-        this.NumberOfSubscribers = numberOfSubscribers;
-        this.NumberOfLections = numberOfLections;
-
-    }
+    public long ID { get; set; }
+    public string Name { get; set; }
+    public List<User> Subscribers { get; set; }
+    public User Author { get; set; }
+    public List<Lecture> Lections { get; set; }
 }
 
 class Program
 {
-    static LectionRepository _lectionRep;
+    static LectureRepository _lectureRep;
     static CourseRepository _courseRep;
     static UserRepository _userRep;
 
@@ -58,17 +41,22 @@ class Program
     {
         try
         {
-            // 1 type 2 count 3 infimum 4 supremum
-            if (args.Length != 4)
+            string dataBaseFilePath = "./../data/data.db";
+            _lectureRep = new LectureRepository(dataBaseFilePath);
+            _courseRep = new CourseRepository(dataBaseFilePath);
+            _userRep = new UserRepository(dataBaseFilePath);
+
+            var courses = _courseRep.GetImageData(5);
+            foreach (var obj in courses)
             {
-                throw new ArgumentException();
+                Console.WriteLine($"{obj.ID}, {obj.Name}");
+                foreach (var user in obj.Subscribers)
+                {
+                    Console.WriteLine($"  {user.ID}");
+                }
             }
 
-            _lectionRep = new LectionRepository("./../data/data.db");
-            _courseRep = new CourseRepository("./../data/data.db");
-            _userRep = new UserRepository("./../data/data.db");
-
-            ParseArgs(args);
+            // ParseArgs(args);
         }
         catch (Exception ex)
         {
@@ -78,11 +66,18 @@ class Program
 
     static void ParseArgs(string[] args)
     {
-        Dictionary<string, Action<int,int,int>> functions = new Dictionary<string, Action<int, int, int>>();
-        functions.Add("lections", GenerateLections);
-        functions.Add("courses", GenerateCourses);
+        // 1 type 2 count
+        if (args.Length != 2)
+        {
+            throw new ArgumentException();
+        }
 
-        Action<int, int, int> generate = null;
+        Dictionary<string, Action<int>> functions = new Dictionary<string, Action<int>>();
+        functions.Add("lectures", GenerateLectures);
+        functions.Add("courses", GenerateCourses);
+        functions.Add("users", GenerateUsers);
+
+        Action<int> generate = null;
         if (!functions.TryGetValue(args[0], out generate))
         {
             throw new ArgumentException($"Invalid operation {args[0]}.");
@@ -94,62 +89,90 @@ class Program
             throw new ArgumentException("Invalid count type.");
         }
 
-        int a;
-        if (!int.TryParse(args[2], out a))
-        {
-            throw new ArgumentException("Invalid a type.");
-        }
-        if (a < 0)
-        {
-            throw new ArgumentException("a must be greater than 0.");
-        }
-
-        int b;
-        if (!int.TryParse(args[3], out b))
-        {
-            throw new ArgumentException("Invalid b type.");
-        }
-        if (b < 0)
-        {
-            throw new ArgumentException("b must be greater than 0.");
-        }
-
-        generate(count, Math.Min(a, b), Math.Max(a, b));
+        generate(count);
     }
 
-    static void GenerateLections(int count, int infimum, int supremum)
+    static void GenerateLectures(int count)
     {
         for (int i = 0; i < count; ++i)
         {
-            PutRandomLection(infimum, supremum);
+            PutRandomLecture();
         }
     }
 
-    static void GenerateCourses(int count, int infimum, int supremum)
+    static void GenerateCourses(int count)
     {
         for (int i = 0; i < count; ++i)
         {
-            PutRandomCourse(infimum, supremum);
+            PutRandomCourse();
         }
     }
 
-    static void PutRandomLection(int inf, int sup)
+    static void GenerateUsers(int count)
     {
-        string theme = GetRandomSentence("./../data/generator/words.txt", 1, 5);
-        long ID = _lectionRep.Insert(new Lection(theme), new Random().Next(inf, sup));
+        for (int i = 0; i < count; ++i)
+        {
+            PutRandomUser();
+        }
     }
 
-    static void PutRandomCourse(int infimum, int supremum)
+    static void PutRandomLecture()
     {
+        Lecture lection = new Lecture();
+        lection.Theme = GetRandomLineFromFile("./../data/generator/lectures_themes.csv");
+        lection.course = new Course();
+
+        var coursesIDs = _courseRep.GetAllIDs();
+        if (coursesIDs.Count == 0)
+        {
+            throw new Exception("Can't make a relationship with course, courses table is empty.");
+        }
+
+        lection.course.ID = coursesIDs[new Random().Next(0, coursesIDs.Count)];
+        long ID = _lectureRep.Insert(lection);
+    }
+
+    static void PutRandomCourse()
+    {
+
+        string name = GetRandomLineFromFile("./../data/generator/courses_names.csv");
+        Course course = new Course();
+        course.Name = name;
+        course.Author = new User();
+        
+        var usersIDs = _userRep.GetAllIDs();
+        if (usersIDs.Count == 0)
+        {
+            throw new Exception("Can't make a relationship with course, courses table is empty.");
+        }
+        course.Author.ID = usersIDs[new Random().Next(0, usersIDs.Count)];
+
+        long ID = _courseRep.Insert(course);
+    }
+
+    static void PutRandomUser()
+    {
+        User user = new User();
+        user.Login = GetRandomSentence("./../data/generator/words.txt", 1, 1);
+        user.Password = GetRandomSentence("./../data/generator/words.txt", 1, 1);
         string fname = GetRandomSentence("./../data/generator/first_names.txt", 1, 1);
         string lname = GetRandomSentence("./../data/generator/last_names.txt", 1, 1);
-        string author = lname + fname;
-        string name = GetRandomSentence("./../data/generator/words.txt", 1, 10);
-        Random rand = new Random();
-        int subsribers = rand.Next(infimum, supremum);
-        int lections = rand.Next(infimum, supremum);
+        user.Fullname = fname + lname;
 
-        long ID = _courseRep.Insert(new Course(author, name, subsribers, lections));
+        long userID = _userRep.Insert(user);
+
+        var coursesIDs = _courseRep.GetAllIDs();
+        Random rand = new Random();
+        int subsribers = rand.Next(1, 10);
+
+        for (int i = 0; i < subsribers; ++i)
+        {
+            long courseID = coursesIDs[rand.Next(0, coursesIDs.Count - 1)];
+            Course course = new Course();
+            course.ID = courseID;
+            user.ID = userID;
+            _courseRep.MakeRelationship(user, course);
+        }
     }
 
     static string GetRandomSentence(string fileDataPath, int min, int max)
@@ -181,6 +204,26 @@ class Program
         string text = stringBuilder.ToString();
 
         return text;
+    }
+
+    static string GetRandomLineFromFile(string fileDataPath)
+    {
+        Random rand = new Random();
+
+        int fileLinesCount = CountLinesInFile(fileDataPath);
+        int pos = rand.Next(1, fileLinesCount + 1);
+
+        StreamReader streamReader = new StreamReader(fileDataPath);
+        string word = "";
+
+        for (int j = 0; j < pos; ++j)
+        {
+            word = streamReader.ReadLine();
+        }
+
+        streamReader.Close();
+
+        return word;
     }
 
     static int CountLinesInFile(string path)
