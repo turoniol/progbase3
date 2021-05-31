@@ -1,3 +1,4 @@
+using System;
 using EntitiesProcessingLib.Entities;
 using EntitiesProcessingLib.Repositories;
 using Terminal.Gui;
@@ -6,11 +7,17 @@ namespace UserInterface
 {
     public class CourseInfo : Dialog
     {
-        private CourseRepository _rep;
+        private User _loginedUser;
+        private CourseRepository _courseRep;
+        private SubscriptionRepository _subscriptionRep;
         private TextField _idView;
         private TextField _titleView;
         private TextField _authorIDView;
         private CheckBox _importedBox;
+        private Button _deleteBtn;
+        private Button _updateBtn;
+        private Button _subscribeBtn;
+        private Button _unsubscribeBtn;
 
         public CourseInfo()
         {
@@ -43,15 +50,42 @@ namespace UserInterface
             _importedBox.Toggled += OnToggled;
             this.Add(_idView, _titleView, _authorIDView, _importedBox);
 
-            Button deleteBtn = new Button("Delete") {
+            _deleteBtn = new Button("Delete") {
                 X = 1, Y = 4 * yShift,
             };
-            Button updateBtn = new Button("Update") {
+            _updateBtn = new Button("Update") {
                 X = 15, Y = 4 * yShift,
             };
-            deleteBtn.Clicked += OnDelete;
-            updateBtn.Clicked += OnUpdate;
-            this.Add(deleteBtn, updateBtn);
+            _subscribeBtn = new Button("Subscribe") {
+                X = 1, Y = 4 * yShift,
+            };
+            _unsubscribeBtn = new Button("Unsubscribe") {
+                X = 15, Y = 4 * yShift, Visible = false,
+            };
+            _deleteBtn.Clicked += OnDelete;
+            _updateBtn.Clicked += OnUpdate;
+            _subscribeBtn.Clicked += OnSubscribe;
+            _unsubscribeBtn.Clicked += OnUnsubscribe;
+
+            this.Add(_deleteBtn, _updateBtn, _subscribeBtn, _unsubscribeBtn);
+        }
+
+        private void OnUnsubscribe()
+        {
+            var sub = _subscriptionRep.GetSubscription(_loginedUser.ID, long.Parse(_idView.Text.ToString()));
+            _subscriptionRep.Delete(sub.id);
+            SetVisibility();
+        }
+
+        private void OnSubscribe()
+        {
+            _subscriptionRep.Insert(_loginedUser.ID, long.Parse(_idView.Text.ToString()));
+            SetVisibility();
+        }
+
+        public void LoginUser(User user)
+        {
+            _loginedUser = user;
         }
 
         private void OnUpdate()
@@ -61,7 +95,7 @@ namespace UserInterface
             {
                 CourseUpdate dlg = new CourseUpdate();
                 long id = long.Parse(_idView.Text.ToString());
-                dlg.SetCourse(_rep.GetCourse(id));
+                dlg.SetCourse(_courseRep.GetCourse(id));
                 Application.Run(dlg);
 
                 if (dlg.canceled)
@@ -70,7 +104,7 @@ namespace UserInterface
                 }
 
                 this.SetCourse(dlg.Course);
-                _rep.Update(id, dlg.Course);
+                _courseRep.Update(id, dlg.Course);
             }
             catch
             {
@@ -86,13 +120,14 @@ namespace UserInterface
                 return;
             }
 
-            _rep.Delete(long.Parse(_idView.Text.ToString()));
+            _courseRep.Delete(long.Parse(_idView.Text.ToString()));
             Application.RequestStop();
         }
 
-        public void SetRepository(CourseRepository rep)
+        public void SetRepository(CourseRepository courseRep, SubscriptionRepository subRep)
         {
-            _rep = rep;
+            _courseRep = courseRep;
+            _subscriptionRep = subRep;
         }
 
         public void SetCourse(Course d)
@@ -101,6 +136,23 @@ namespace UserInterface
             _titleView.Text = d.Title;
             _authorIDView.Text = d.Author.ID.ToString();
             _importedBox.Checked = d.IsImported;
+
+            SetVisibility();
+        }
+
+        private void SetVisibility()
+        {
+            bool isAuthor = _loginedUser.ID == long.Parse(_authorIDView.Text.ToString());
+            _deleteBtn.Visible = isAuthor;
+            _updateBtn.Visible = isAuthor;
+            _subscribeBtn.Visible = !isAuthor;
+            _unsubscribeBtn.Visible = false;
+
+            if (_subscriptionRep.GetSubscription(_loginedUser.ID, long.Parse(_idView.Text.ToString())) != null)
+            {
+                _subscribeBtn.Visible = false;
+                _unsubscribeBtn.Visible = true;
+            }
         }
 
         private void OnToggled(bool obj)

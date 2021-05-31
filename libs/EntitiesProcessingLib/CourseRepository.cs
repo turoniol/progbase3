@@ -11,6 +11,17 @@ namespace EntitiesProcessingLib.Repositories
         public CourseRepository(string dataBaseFileName)
         {
             _connection = new SqliteConnection($"Data Source={dataBaseFileName}");
+            _connection.Open();
+            var command = _connection.CreateCommand();
+            command.CommandText = @"
+                CREATE TABLE IF NOT EXISTS courses (
+                id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT UNIQUE, 
+                name TEXT NOT NULL,
+                author_id INTEGER NOT NULL,
+                imported TEXT DEFAULT 'False');
+            ";
+            command.ExecuteNonQuery();
+            _connection.Close();
         }
 
         public long Insert(Course course)
@@ -114,14 +125,16 @@ namespace EntitiesProcessingLib.Repositories
             return count == 1;
         }
    
-        public long GetTotalCount()
+        public long GetTotalCount(string name)
         {
             _connection.Open();
             var command = _connection.CreateCommand();
 
             command.CommandText = @"
-                SELECT COUNT(*) FROM courses;
+                SELECT COUNT(*) FROM courses
+                WHERE name LIKE '%' || $value || '%';
             ";
+            command.Parameters.AddWithValue("$value", name);
 
             long count = (long) command.ExecuteScalar();
             _connection.Close();
@@ -129,16 +142,43 @@ namespace EntitiesProcessingLib.Repositories
             return count;
         }
 
-        public List<Course> GetPage(int pageNumber, int pageSize)
+        public long GetTotalCount(long authorID, string name)
+        {
+            if (authorID == -1)
+            {
+                return GetTotalCount(name);
+            }
+
+            _connection.Open();
+            var command = _connection.CreateCommand();
+
+            command.CommandText = @"
+                SELECT COUNT(*) FROM courses 
+                WHERE author_id = $author_id AND
+                    name LIKE '%' || $value || '%';
+            ";
+            command.Parameters.AddWithValue("$author_id", authorID);
+            command.Parameters.AddWithValue("$value", name);
+
+            long count = (long) command.ExecuteScalar();
+            _connection.Close();
+
+            return count;
+        }
+
+        public List<Course> GetPage(int pageNumber, int pageSize, string name)
         {
             _connection.Open();
             var command = _connection.CreateCommand();
 
             command.CommandText = @"
-                SELECT * FROM courses LIMIT $page_size OFFSET $page_number;
+                SELECT * FROM courses 
+                WHERE name LIKE '%' || $value || '%'
+                LIMIT $page_size OFFSET $page_number;
             ";
             command.Parameters.AddWithValue("$page_size", pageSize);
             command.Parameters.AddWithValue("$page_number", (pageNumber - 1) * pageSize);
+            command.Parameters.AddWithValue("$value", name);
 
             var reader = command.ExecuteReader();
             List<Course> courses = new List<Course>();
@@ -160,9 +200,55 @@ namespace EntitiesProcessingLib.Repositories
             return courses;
         }
 
-        public int GetTotalPagesCount(int pageSize)
+        public List<Course> GetPage(int pageNumber, int pageSize, long authorID, string name)
         {
-            return (int) System.Math.Ceiling(GetTotalCount() / (float) pageSize);
+            if (authorID == -1)
+            {
+                return GetPage(pageNumber, pageSize, name);
+            }
+
+            _connection.Open();
+            var command = _connection.CreateCommand();
+
+            command.CommandText = @"
+                SELECT * FROM courses 
+                WHERE author_id = $author_id AND
+                    name LIKE '%' || $value || '%'
+                LIMIT $page_size OFFSET $page_number;
+            ";
+            command.Parameters.AddWithValue("$page_size", pageSize);
+            command.Parameters.AddWithValue("$page_number", (pageNumber - 1) * pageSize);
+            command.Parameters.AddWithValue("$author_id", authorID);
+            command.Parameters.AddWithValue("$value", name);
+
+            var reader = command.ExecuteReader();
+            List<Course> courses = new List<Course>();
+            while (reader.Read())
+            {
+                courses.Add(
+                    new Course
+                    {
+                        ID = long.Parse(reader.GetString(0)),
+                        Title = reader.GetString(1),
+                        Author = new User { ID = long.Parse(reader.GetString(2)) },
+                        IsImported = bool.Parse(reader.GetString(3)),
+                    }
+                );
+            }
+            reader.Close();
+            _connection.Close();
+
+            return courses;
+        }
+
+        public int GetTotalPagesCount(int pageSize, string name)
+        {
+            return (int) System.Math.Ceiling(GetTotalCount(name) / (float) pageSize);
+        }
+
+        public int GetTotalPagesCount(int pageSize, long authorID, string name)
+        {
+            return (int) System.Math.Ceiling(GetTotalCount(name) / (float) pageSize);
         }
 
         public List<Course> GetCoursesByAuthor(long authorID)
@@ -181,34 +267,6 @@ namespace EntitiesProcessingLib.Repositories
                 course.ID = long.Parse(reader.GetString(0));
                 course.Title = reader.GetString(1);
                 course.Author = new User { ID = authorID};
-                course.IsImported = bool.Parse(reader.GetString(3));
-
-                courses.Add(course);
-            }
-            reader.Close();
-            _connection.Close();
-
-            return courses;
-        }
-    
-        public List<Course> GetCoursesByListener(long listenerID)
-        {
-            _connection.Open();
-            var command = _connection.CreateCommand();
-
-            command.CommandText = @"SELECT course_id, name
-                FROM users_courses, courses 
-                WHERE users_courses.user_id = $id AND users_courses.course_id = courses.id;";
-            command.Parameters.AddWithValue("$id", listenerID);
-
-            List<Course> courses = new List<Course>();
-            var reader = command.ExecuteReader();
-            while (reader.Read())
-            {
-                Course course = new Course();
-                course.ID = long.Parse(reader.GetString(0));
-                course.Title = reader.GetString(1);
-                course.Author = new User { ID = long.Parse(reader.GetString(2)) };
                 course.IsImported = bool.Parse(reader.GetString(3));
 
                 courses.Add(course);
@@ -239,24 +297,6 @@ namespace EntitiesProcessingLib.Repositories
             return ids;
         }
 
-        // public long MakeRelationship(User user, Course course)
-        // {
-        //     _connection.Open();
-        //     var command = _connection.CreateCommand();
-
-        //     command.CommandText = @"
-        //         INSERT INTO users_courses (user_id, course_id)
-        //         VALUES ($user_id, $course_id);
-        //         SELECT last_insert_rowid();
-        //     ";
-
-        //     command.Parameters.AddWithValue("$user_id", user.ID);
-        //     command.Parameters.AddWithValue("$course_id", course.ID);
-        //     long ID = (long) command.ExecuteScalar();
-
-        //     return ID;
-        // }
-
         public List<Course> GetCourseExport(string word)
         {
             _connection.Open();
@@ -265,8 +305,8 @@ namespace EntitiesProcessingLib.Repositories
             command.CommandText = @"
                 SELECT theme, courses.id, name, lectures.id
                 FROM lectures, courses 
-                WHERE courses.name 
-                LIKE '%' || $value || '%' AND lectures.course_id = courses.id;
+                WHERE courses.name LIKE '%' || $value || '%' AND 
+                    lectures.course_id = courses.id;
             ";
             command.Parameters.AddWithValue("$value", word);
             
@@ -342,43 +382,10 @@ namespace EntitiesProcessingLib.Repositories
             reader.Close();
             _connection.Close();
             
-            var sorted = SortByListeners(coursesDictionary);
+            var sorted = EntitiesProcessingLib.DataProcessing.CourseProcessor.SortByListeners(coursesDictionary);
             List<Course> result = new List<Course>(sorted.GetRange(0, n));
 
             return result;
-        }
-
-        private List<Course> SortByListeners(Dictionary<long, Course> coursesDictionary)
-        {
-            Dictionary<int, List<long>> counts = new Dictionary<int, List<long>>();
-            foreach (var course in coursesDictionary.Values)
-            {
-                int count = course.Subscribers.Count;
-                List<long> ids = null;
-                if (!counts.TryGetValue(count, out ids))
-                {
-                    ids = new List<long>();
-                    counts.Add(count, ids);
-                }
-                if (!ids.Contains(course.ID))
-                {
-                    ids.Add(course.ID);
-                }
-            }
-            List<int> sortedCounts = new List<int>(counts.Keys);
-            sortedCounts.Sort();
-
-            List<Course> sorted = new List<Course>();
-            for (int i = 0; i < sortedCounts.Count; ++i)
-            {
-                int j = sortedCounts.Count - 1 - i;
-                foreach (var id in counts[sortedCounts[j]])
-                {
-                    sorted.Add(coursesDictionary[id]);
-                }
-            }
-
-            return sorted;
         }
     }
 }

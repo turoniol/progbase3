@@ -6,15 +6,16 @@ namespace UserInterface
     public class CourseCreatingDialog : Dialog
     {
         public Course course { get; private set; }
+        private User _loginedUser;
 
         public bool canceled;
 
         private TextField _courseTitleField;
 
-        private TextField _authorIDField;
-
-        public CourseCreatingDialog() : base("New course")
+        public CourseCreatingDialog(User user) : base("New course")
         {
+            _loginedUser = user;
+
             int yShift = 2;
             this.Height = 10;
             this.Width = 50;
@@ -28,16 +29,11 @@ namespace UserInterface
 
             // labels
             Label titleLbl = new Label(2, 1 * yShift, "Title:");
-            Label authorLbl = new Label(2, 2 * yShift, "Author ID:");
             this.Add(titleLbl);
-            this.Add(authorLbl);
 
             // text fields
             _courseTitleField = new TextField(14, 1 * yShift, 30, "");
-            _authorIDField = new TextField(14, 2 * yShift, 30, "");
-            _authorIDField.TextChanging += OnAuthorIDInput;
             this.Add(_courseTitleField);
-            this.Add(_authorIDField);
         }
 
         private void OnCancel()
@@ -52,7 +48,7 @@ namespace UserInterface
             course = new Course() 
             {
                 Title = _courseTitleField.Text.ToString(),
-                Author = new User {ID = long.Parse(_authorIDField.Text.ToString())},
+                Author = new User {ID = _loginedUser.ID},
             };
             Application.RequestStop();
         }

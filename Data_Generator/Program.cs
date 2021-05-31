@@ -10,6 +10,7 @@ class Program
     static LectureRepository _lectureRep;
     static CourseRepository _courseRep;
     static UserRepository _userRep;
+    static SubscriptionRepository _subRep;
 
     static void Main(string[] args)
     {
@@ -17,6 +18,7 @@ class Program
         _lectureRep = new LectureRepository(dataBaseFilePath);
         _courseRep = new CourseRepository(dataBaseFilePath);
         _userRep = new UserRepository(dataBaseFilePath);
+        _subRep = new SubscriptionRepository(dataBaseFilePath);
 
         ParseArgs(args);
     }
@@ -77,7 +79,7 @@ class Program
     {
         Lecture lection = new Lecture();
         lection.Theme = GetRandomLineFromFile("./../data/generator/lectures_themes.csv");
-        lection.course = new Course();
+        lection.Course = new Course();
 
         var coursesIDs = _courseRep.GetAllIDs();
         if (coursesIDs.Count == 0)
@@ -85,7 +87,7 @@ class Program
             throw new Exception("Can't make a relationship with course, courses table is empty.");
         }
 
-        lection.course.ID = coursesIDs[new Random().Next(0, coursesIDs.Count)];
+        lection.Course.ID = coursesIDs[new Random().Next(0, coursesIDs.Count)];
         long ID = _lectureRep.Insert(lection);
     }
 
@@ -93,7 +95,7 @@ class Program
     {
         string name = GetRandomLineFromFile("./../data/generator/courses_names.csv");
         Course course = new Course();
-        course.Name = name;
+        course.Title = name;
         course.Author = new User();
         
         var usersIDs = _userRep.GetAllIDs();
@@ -127,7 +129,13 @@ class Program
             Course course = new Course();
             course.ID = courseID;
             user.ID = userID;
-            _courseRep.MakeRelationship(user, course);
+            var subs = _subRep.GetSubscription(userID, courseID);
+            
+            if (subs != null)
+            {
+                return;
+            }
+            _subRep.Insert(userID, courseID);
         }
     }
 

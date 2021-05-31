@@ -9,6 +9,7 @@ namespace UserInterface
     {
         public bool canceled;
         public User User {get; private set;}
+        private User _loginedUser;
         private TextField _idView;
         private TextField _loginView;
         private TextField _passwordView;
@@ -29,7 +30,7 @@ namespace UserInterface
             int yShift = 2;
             Label id = new Label(1, 0 * yShift, "ID: ");
             Label login = new Label(1, 1 * yShift, "Login: ");
-            Label password = new  Label(1, 2 * yShift, "Password: ");
+            Label password = new Label(1, 2 * yShift, "New password: ");
             Label fullname = new Label(1, 3 * yShift, "Fullname: ");
             this.Add(id, login, password, fullname);
 
@@ -41,7 +42,7 @@ namespace UserInterface
                 X = xShift, Y = 1 * yShift, Width = 50,
             };
             _passwordView = new TextField() {
-                X = xShift, Y = 2 * yShift, Width = 50,
+                X = xShift, Y = 2 * yShift, Width = 50, Secret = true,
             };
             _fullnameView = new TextField() {
                 X = xShift, Y = 3 * yShift, Width = 50,
@@ -71,9 +72,9 @@ namespace UserInterface
 
         public void SetUser(User l)
         {
+            _loginedUser = l;
             _idView.Text = l.ID.ToString();
             _loginView.Text = l.Login;
-            _passwordView.Text = l.Password;
             _fullnameView.Text = l.Fullname;
         }
     }

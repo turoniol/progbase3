@@ -92,6 +92,39 @@ namespace EntitiesProcessingLib.DataProcessing
 
             plt.SaveFig(imagePath);
         }
+        
+        public static List<Course> SortByListeners(Dictionary<long, Course> coursesDictionary)
+        {
+            Dictionary<int, List<long>> counts = new Dictionary<int, List<long>>();
+            foreach (var course in coursesDictionary.Values)
+            {
+                int count = course.Subscribers.Count;
+                List<long> ids = null;
+                if (!counts.TryGetValue(count, out ids))
+                {
+                    ids = new List<long>();
+                    counts.Add(count, ids);
+                }
+                if (!ids.Contains(course.ID))
+                {
+                    ids.Add(course.ID);
+                }
+            }
+            List<int> sortedCounts = new List<int>(counts.Keys);
+            sortedCounts.Sort();
+
+            List<Course> sorted = new List<Course>();
+            for (int i = 0; i < sortedCounts.Count; ++i)
+            {
+                int j = sortedCounts.Count - 1 - i;
+                foreach (var id in counts[sortedCounts[j]])
+                {
+                    sorted.Add(coursesDictionary[id]);
+                }
+            }
+
+            return sorted;
+        }
     }
     
     [XmlRoot("courses")]

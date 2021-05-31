@@ -1,7 +1,7 @@
 using Terminal.Gui;
 using EntitiesProcessingLib.Repositories;
 using EntitiesProcessingLib.DataProcessing;
-using System;
+using EntitiesProcessingLib.Entities;
 
 namespace UserInterface
 {
@@ -10,15 +10,24 @@ namespace UserInterface
         private LectureRepository _lectureRep;
         private CourseRepository _courseRep;
         private UserRepository _userRep;
+        private SubscriptionRepository _subscriptionRep;
+        private Label _userInfo;
+        private User _loginedUser;
+        private EntityChoosingWindow _choosingWin;
+        private CourseView _courseView;
+        private UserView _userView;
+        private LectureView _lectureView;
 
-        public MainWindow(string dataBaseFilePath)
+        public MainWindow(User user)
         {
+            _loginedUser = user;
+
             // geometry
             this.Height = Dim.Fill();
             this.Width = Dim.Fill();
             this.Y = 1;
-            this.X = 0;
-            int xShift = 2, yShift = 2;
+            this.X = Pos.Center();
+            int xShift = 15;
 
             MenuBar menuBar = new MenuBar(new MenuBarItem[]
             {
@@ -34,99 +43,129 @@ namespace UserInterface
                 }),
             });
 
-            Button createButton = new Button(xShift, 1 * yShift, "New");
-            Button viewButton = new Button(xShift, 2 * yShift, "Open view");
-            createButton.Clicked += OnCreateButton;
-            viewButton.Clicked += OnViewButton;
-            this.Add(createButton, viewButton);
+            Button createCourseButton = new Button(1 + 0 * xShift, 1, "New course");
+            Button createLectureButton = new Button(1 + 1 * xShift, 1, "New lecture");
+            Button logoutButton = new Button(3 * xShift, 1, "Log out");
+
+            _lectureView = new LectureView() { Visible = false, };
+            _userView = new UserView() { Visible = false, };
+            _courseView = new CourseView();
+            Login(user);
+            int choosingWinHeight = 10, choosingWinWidth = 30;
+            _choosingWin = new EntityChoosingWindow()
+            {
+                X = Pos.AnchorEnd(choosingWinWidth),
+                Y = Pos.AnchorEnd(choosingWinHeight),
+            };
+
+            createCourseButton.Clicked += OnCourseCreate;
+            createLectureButton.Clicked += OnLectureCreate;
+            logoutButton.Clicked += OnLogout;
+            _choosingWin.ItemChanged += OnSelectedItemChanged;
+
+            this.Add(_courseView, _lectureView, _userView);
+            this.Add(createCourseButton, createLectureButton, logoutButton, _choosingWin);
 
             Application.Top.Add(menuBar, this);
+            SetUserInfo();
         }
 
-        private void OnViewButton()
+        private void Login(User user)
         {
-            EntityChoosingDialog dlg = new EntityChoosingDialog();
-            Application.Run(dlg);
+            _courseView.LoginUser(_loginedUser);
+            _userView.LoginUser(_loginedUser);
+            _lectureView.LoginUser(_loginedUser);
+        }
 
-            if (dlg.canceled)
-            {
-                return;
-            }
+        private void OnSelectedItemChanged()
+        {
+            _userView.Visible = false;
+            _courseView.Visible = false;
+            _lectureView.Visible = false;
 
-            switch (dlg.Entity)
+            switch (_choosingWin.Selected())
             {
-                case EntityType.User:
-                    UserView userView = new UserView();
-                    Application.Top.Add(userView);
-                    userView.SetRepository(_userRep);
-                    Application.Run(userView);
-                    Application.Top.Remove(userView);
-                    break;
                 case EntityType.Course:
-                    CourseView courseView = new CourseView();
-                    Application.Top.Add(courseView);
-                    courseView.SetRepository(_courseRep);
-                    Application.Run(courseView);
-                    Application.Top.Remove(courseView);
+                    _courseView.Visible = true;
                     break;
                 case EntityType.Lecture:
-                    LectureView lectureView = new LectureView();
-                    Application.Top.Add(lectureView);
-                    lectureView.SetRepository(_lectureRep);
-                    Application.Run(lectureView);
-                    Application.Top.Remove(lectureView);
+                    _lectureView.Visible = true;
+                    break;
+                case EntityType.User:
+                    _userView.Visible = true;
                     break;
             }
+        }
+
+        private void OnLectureCreate()
+        {
+            LectureCreatingDialog dlg = new LectureCreatingDialog();
+            Application.Run(dlg);
+
+            if (dlg.canceled) return;
+
+            var lecture = dlg.lecture;
+            var course = _courseRep.GetCourse(lecture.Course.ID);
+            if (course == null || course.Author.ID != _loginedUser.ID)
+            {
+                MessageBox.ErrorQuery("Error", $"The course with id [{lecture.Course.ID}] isn't your", "Ok");
+                return;
+            }
+            _lectureRep.Insert(dlg.lecture);
+            _lectureView.UpdateView();
+        }
+
+        private void OnCourseCreate()
+        {
+            CourseCreatingDialog dlg = new CourseCreatingDialog(_loginedUser);
+            Application.Run(dlg);
+
+            if (dlg.canceled) return;
+
+            _courseRep.Insert(dlg.course);
+            _courseView.UpdateView();
+        }
+
+        private void OnLogout()
+        {
+            int decision = MessageBox.Query("Log out", "Are you sure?", "Yes", "No");
+
+            if (decision == 1) return;
+
+            this.Visible = false;
+            AuthenticationWindow window = new AuthenticationWindow(_userRep);
+            Application.Run(window);
+            _loginedUser = window.User;
+            SetUserInfo();
+
+            Login(_loginedUser);
+            this.Visible = true;
+        }
+
+        private void SetUserInfo()
+        {
+            if (_userInfo != null) 
+            {
+                this.Remove(_userInfo);
+            }
+            _userInfo = new Label($"Logined as: {_loginedUser.Login}")
+            {
+                X = 2,
+            };
+            this.Add(_userInfo);
         }
 
         public void SetRepositories(UserRepository userRepository, 
-            CourseRepository courseRepository, LectureRepository lectureRepository)
+            CourseRepository courseRepository, LectureRepository lectureRepository, 
+            SubscriptionRepository subscriptionRepository)
         {
             _userRep = userRepository;
             _courseRep = courseRepository;
             _lectureRep = lectureRepository;
-        }
-
-        private void OnCreateButton()
-        {
-            EntityChoosingDialog dlg = new EntityChoosingDialog();
-            Application.Run(dlg);
-
-            if (dlg.canceled)
-            {
-                return;
-            }
-
-            switch (dlg.Entity)
-            {
-                case EntityType.User:
-                    UserCreatingDialog userDlg = new UserCreatingDialog();
-                    Application.Run(userDlg);
-
-                    if (userDlg.canceled) return;
-
-                    _userRep.Insert(userDlg.user);
-
-                    break;
-                case EntityType.Course:
-                    CourseCreatingDialog courseDlg = new CourseCreatingDialog();
-                    Application.Run(courseDlg);
-
-                    if (courseDlg.canceled) return;
-
-                    _courseRep.Insert(courseDlg.course);
-
-                    break;
-                case EntityType.Lecture:
-                    LectureCreatingDialog lectureDlg = new LectureCreatingDialog();
-                    Application.Run(lectureDlg);
-
-                    if (lectureDlg.canceled) return;
-
-                    _lectureRep.Insert(lectureDlg.lecture);
-
-                    break;
-            }
+            _subscriptionRep = subscriptionRepository;
+            _courseView.SetRepository(_courseRep, subscriptionRepository);
+            _userView.SetRepository(_userRep);
+            _lectureView.SetRepository(_lectureRep, _courseRep);
         }
 
         private void OnExport()

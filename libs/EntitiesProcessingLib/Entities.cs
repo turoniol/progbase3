@@ -20,7 +20,7 @@ namespace EntitiesProcessingLib.Entities
 
         public override string ToString()
         {
-            return $"[{ID}] - {Fullname}";
+            return $"[{ID}] {Login} - {Fullname}";
         }
     }
 
@@ -64,7 +64,14 @@ namespace EntitiesProcessingLib.Entities
 
         public override string ToString()
         {
-            return $"[{ID}] - {Title}";
+            return $"[{ID}] {Title}";
         }
+    }
+
+    public class Subscription 
+    {
+        public long id;
+        public long userID;
+        public long courseID;
     }
 }

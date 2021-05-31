@@ -11,6 +11,17 @@ namespace EntitiesProcessingLib.Repositories
         public LectureRepository(string dataBaseFileName)
         {
             _connection = new SqliteConnection($"Data Source={dataBaseFileName}");
+            _connection.Open();
+            var command = _connection.CreateCommand();
+            command.CommandText = @"
+                CREATE TABLE IF NOT EXISTS lectures (
+                id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT UNIQUE, 
+                theme TEXT NOT NULL,
+                course_id INTEGER NOT NULL,
+                imported TEXT DEFAULT 'False');
+            ";
+            command.ExecuteNonQuery();
+            _connection.Close();
         }    
 
         public long Insert(Lecture lecture)
@@ -115,14 +126,15 @@ namespace EntitiesProcessingLib.Repositories
             return count == 1;
         }
    
-        public long GetTotalCount()
+        public long GetTotalCount(string theme)
         {
             _connection.Open();
             var command = _connection.CreateCommand();
 
             command.CommandText = @"
-                SELECT COUNT(*) FROM lectures;
+                SELECT COUNT(*) FROM lectures WHERE theme LIKE '%' || $value || '%';
             ";
+            command.Parameters.AddWithValue("$value", theme);
 
             long count = (long) command.ExecuteScalar();
             _connection.Close();
@@ -130,16 +142,19 @@ namespace EntitiesProcessingLib.Repositories
             return count;
         }
 
-        public List<Lecture> GetPage(int pageNumber, int pageSize)
+        public List<Lecture> GetPage(int pageNumber, int pageSize, string theme)
         {
             _connection.Open();
             var command = _connection.CreateCommand();
 
             command.CommandText = @"
-                SELECT * FROM lectures LIMIT $page_size OFFSET $page_number;
+                SELECT * FROM lectures
+                WHERE theme LIKE '%' || $value || '%'
+                LIMIT $page_size OFFSET $page_number;
             ";
             command.Parameters.AddWithValue("$page_size", pageSize);
             command.Parameters.AddWithValue("$page_number", (pageNumber - 1) * pageSize);
+            command.Parameters.AddWithValue("$value", theme);
 
             var reader = command.ExecuteReader();
             List<Lecture> lectures = new List<Lecture>();
@@ -163,9 +178,9 @@ namespace EntitiesProcessingLib.Repositories
             return lectures;
         }
 
-        public int GetTotalPagesCount(int pageSize)
+        public int GetTotalPagesCount(int pageSize, string theme)
         {
-            return (int) System.Math.Ceiling(GetTotalCount() / (float) pageSize);
+            return (int) System.Math.Ceiling(GetTotalCount(theme) / (float) pageSize);
         }
 
         public List<Lecture> GetLecturesByCourse(long courseID)

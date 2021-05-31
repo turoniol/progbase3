@@ -1,16 +1,19 @@
 using EntitiesProcessingLib.Entities;
 using EntitiesProcessingLib.Repositories;
+using EntitiesProcessingLib.Authentication;
 using Terminal.Gui;
 
 namespace UserInterface
 {
     public class UserInfo : Dialog
     {
+        private User _loginedUser;
         private UserRepository _rep;
         private TextField _idView;
         private TextField _loginView;
-        private TextField _passwordView;
         private TextField _fullnameView;
+        private Button _deleteBtn;
+        private Button _updateBtn;
 
         public UserInfo()
         {
@@ -23,9 +26,8 @@ namespace UserInterface
             int yShift = 2;
             Label id = new Label(1, 0 * yShift, "ID: ");
             Label login = new Label(1, 1 * yShift, "Login: ");
-            Label password = new  Label(1, 2 * yShift, "Password: ");
-            Label fullname = new Label(1, 3 * yShift, "Fullname: ");
-            this.Add(id, login, password, fullname);
+            Label fullname = new Label(1, 2 * yShift, "Fullname: ");
+            this.Add(id, login, fullname);
 
             int xShift = 15;
             _idView = new TextField() {
@@ -34,34 +36,34 @@ namespace UserInterface
             _loginView = new TextField() {
                 X = xShift, Y = 1 * yShift, ReadOnly = true, Width = 50,
             };
-            _passwordView = new TextField() {
+            _fullnameView = new TextField() {
                 X = xShift, Y = 2 * yShift, ReadOnly = true, Width = 50,
             };
-            _fullnameView = new TextField() {
-                X = xShift, Y = 3 * yShift, ReadOnly = true, Width = 50,
-            };
 
-            this.Add(_idView, _loginView, _passwordView, _fullnameView);
+            this.Add(_idView, _loginView, _fullnameView);
 
-            Button deleteBtn = new Button("Delete") {
+            _deleteBtn = new Button("Delete") {
                 X = 1, Y = 4 * yShift,
             };
-            Button updateBtn = new Button("Update") {
+            _updateBtn = new Button("Update") {
                 X = 15, Y = 4 * yShift,
             };
-            deleteBtn.Clicked += OnDelete;
-            updateBtn.Clicked += OnUpdate;
-            this.Add(deleteBtn, updateBtn);
+            _deleteBtn.Clicked += OnDelete;
+            _updateBtn.Clicked += OnUpdate;
+            this.Add(_deleteBtn, _updateBtn);
+        }
+
+        public void LoginUser(User user)
+        {
+            _loginedUser = user;
         }
 
         private void OnUpdate()
         {
-            
             try 
             {
                 UserUpdate dlg = new UserUpdate();
-                long id = long.Parse(_idView.Text.ToString());
-                dlg.SetUser(_rep.GetUser(id));
+                dlg.SetUser(_loginedUser);
                 Application.Run(dlg);
 
                 if (dlg.canceled)
@@ -70,11 +72,12 @@ namespace UserInterface
                 }
 
                 this.SetUser(dlg.User);
-                _rep.Update(id, dlg.User);
+                Authenticator auth = new Authenticator(_rep);
+                auth.UpdateUser(dlg.User);
             }
             catch
             {
-                MessageBox.ErrorQuery("Error", "Some fields is empty!", "Ok");
+                MessageBox.ErrorQuery("Error", "Some field is empty!", "Ok");
             }
         }
 
@@ -99,8 +102,10 @@ namespace UserInterface
         {
             _idView.Text = l.ID.ToString();
             _loginView.Text = l.Login;
-            _passwordView.Text = l.Password;
             _fullnameView.Text = l.Fullname;
+
+            _deleteBtn.Visible = l.ID == _loginedUser.ID;
+            _updateBtn.Visible = l.ID == _loginedUser.ID;
         }
     }
 }
