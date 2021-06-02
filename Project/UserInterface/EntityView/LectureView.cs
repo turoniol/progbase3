@@ -2,29 +2,30 @@ using Terminal.Gui;
 using EntitiesProcessingLib.Repositories;
 using EntitiesProcessingLib.Entities;
 using NStack;
+using ServiceLib;
 
 namespace UserInterface
 {
-    public class UserView : Window
+    public class LectureView : Window
     {
         private int _pageSize = 15;
         private int _totalPages;
         private int _page = 1;
         private User _loginedUser;
         private ListView _view;
-        private UserRepository _repo;
+        private RemoteService _service;
         private Label _pageLabel;
         private Button _prevPage;
         private Button _nextPage;
         private TextField _searchField;
 
-        public UserView()
+        public LectureView()
         {
             FrameView frame = new FrameView
             {
-                Title = "Users",
+                Title = "Lectures",
                 X = 0,
-                Y = 4, 
+                Y = 4,
                 Width = Dim.Fill(),
                 Height = Dim.Fill(),
             };
@@ -39,8 +40,11 @@ namespace UserInterface
             _prevPage = new Button(2, 2, "Prev");
             _nextPage = new Button(20, 2, "Next");
             _pageLabel = new Label(12, 2, "??? / ???");
-            _searchField = new TextField() {
-                X = 2, Y = 3, Width = 40,
+            _searchField = new TextField()
+            {
+                X = 2,
+                Y = 3,
+                Width = 40,
             };
 
             _prevPage.Clicked += OnPrev;
@@ -51,10 +55,7 @@ namespace UserInterface
             this.Add(_prevPage, _pageLabel, _nextPage, _searchField);
         }
 
-        public void LoginUser(User user)
-        {
-            _loginedUser = user;
-        }
+        public void LoginUser(User user) => _loginedUser = user;
 
         private void OnSearch(ustring obj)
         {
@@ -63,11 +64,11 @@ namespace UserInterface
 
         private void OnItemOpen(ListViewItemEventArgs obj)
         {
-            User selected = (User) obj.Value;
-            UserInfo dlg = new UserInfo();
+            Lecture selected = (Lecture) obj.Value;
+            LectureInfo dlg = new LectureInfo();
             dlg.LoginUser(_loginedUser);
-            dlg.SetUser(selected);
-            dlg.SetRepository(_repo);
+            dlg.SetService(_service);
+            dlg.SetLecture(selected);
             Application.Run(dlg);
             UpdateView();
         }
@@ -84,26 +85,24 @@ namespace UserInterface
             UpdateView();
         }
 
-        public void SetRepository(UserRepository repo)
+        public void SetService(RemoteService service)
         {
-            _repo = repo;
+            _service = service;
             UpdateView();
         }
 
         public void UpdateView()
         {
             string name = _searchField.Text.ToString();
-            _totalPages = _repo.GetTotalPagesCount(_pageSize, name);
+            _totalPages = _service.GetTotalPagesCountLecture(_pageSize, name, _loginedUser.ID);
+            
+            _page = _page > _totalPages ? _totalPages : _page;
+            _page = _page == 0 ? 1 : _page;
+            
             _prevPage.Visible = (_page != 1);
             _nextPage.Visible = (_page != _totalPages);
 
-            if (_totalPages == 0)
-            {
-                _prevPage.Visible = false;
-                _nextPage.Visible = false;
-            }
-
-            _view.SetSource(_repo.GetPage(_page, _pageSize, name));
+            _view.SetSource(_service.GetPageLecture(_page, _pageSize, name, _loginedUser.ID));
             _pageLabel.Text = $"{_page} / {_totalPages}";
 
             if (_totalPages == 0)

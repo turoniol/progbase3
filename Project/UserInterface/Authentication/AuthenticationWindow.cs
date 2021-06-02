@@ -1,18 +1,17 @@
 using Terminal.Gui;
-using EntitiesProcessingLib.Repositories;
 using EntitiesProcessingLib.Entities;
-using System;
+using ServiceLib;
 
 namespace UserInterface
 {
     public class AuthenticationWindow : Window 
     {
-        private UserRepository _rep;
+        private RemoteService _service;
         public User User {get; private set;}
 
-        public AuthenticationWindow(UserRepository rep)
+        public AuthenticationWindow(RemoteService service)
         {
-            _rep = rep;
+            _service = service;
 
             int width = 20, height = 8;
             Title = "Authentication";
@@ -34,7 +33,7 @@ namespace UserInterface
         private void OnRegister()
         {
             RegisterDialog dlg = new RegisterDialog();
-            dlg.SetRepository(_rep);
+            dlg.SetService(_service);
             Application.Run(dlg);
 
             if (dlg.canceled)
@@ -50,7 +49,7 @@ namespace UserInterface
         private void OnLogin()
         {
             LoginDialog dlg = new LoginDialog();
-            dlg.SetRepository(_rep);
+            dlg.SetService(_service);
             Application.Run(dlg);
 
             if (dlg.canceled)

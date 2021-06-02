@@ -1,16 +1,13 @@
 using Terminal.Gui;
-using EntitiesProcessingLib.Repositories;
-using EntitiesProcessingLib.DataProcessing;
 using EntitiesProcessingLib.Entities;
+using ServiceLib;
+using System;
 
 namespace UserInterface
 {
     public class MainWindow : Window
     {
-        private LectureRepository _lectureRep;
-        private CourseRepository _courseRep;
-        private UserRepository _userRep;
-        private SubscriptionRepository _subscriptionRep;
+        private RemoteService _service;
         private Label _userInfo;
         private User _loginedUser;
         private EntityChoosingWindow _choosingWin;
@@ -35,11 +32,12 @@ namespace UserInterface
                 {
                     new MenuItem("_Export...", "Export courses into XML", OnExport),
                     new MenuItem("_Import...", "Import courses from XML", OnImport),
+                    new MenuItem("_Generate report...", "Generate .docx file", OnReport),
                     new MenuItem("_Quit", "Quit program", Application.RequestStop),
                 }),
                 new MenuBarItem("_Help", new MenuItem[]
                 {
-                    new MenuItem("_Help", "", Application.RequestStop),
+                    new MenuItem("_Help", "", OnHelp),
                 }),
             });
 
@@ -70,6 +68,24 @@ namespace UserInterface
             SetUserInfo();
         }
 
+        private void OnReport()
+        {
+            ReportDialog dlg = new ReportDialog();
+            Application.Run(dlg);
+
+            if (dlg.canceled) return;
+
+            try
+            {
+                _service.Export(dlg.Word, dlg.FilePath);
+                MessageBox.Query("Message", "Succesfull!", "Ok");
+            }
+            catch (System.Exception ex)
+            {
+                MessageBox.ErrorQuery("Error", ex.Message, "Ok");
+            }
+        }
+
         private void Login(User user)
         {
             _courseView.LoginUser(_loginedUser);
@@ -87,12 +103,15 @@ namespace UserInterface
             {
                 case EntityType.Course:
                     _courseView.Visible = true;
+                    _courseView.UpdateView();
                     break;
                 case EntityType.Lecture:
                     _lectureView.Visible = true;
+                    _lectureView.UpdateView();
                     break;
                 case EntityType.User:
                     _userView.Visible = true;
+                    _userView.UpdateView();
                     break;
             }
         }
@@ -105,13 +124,17 @@ namespace UserInterface
             if (dlg.canceled) return;
 
             var lecture = dlg.lecture;
-            var course = _courseRep.GetCourse(lecture.Course.ID);
+            var course = _service.GetCourse(lecture.Course.ID);
             if (course == null || course.Author.ID != _loginedUser.ID)
             {
                 MessageBox.ErrorQuery("Error", $"The course with id [{lecture.Course.ID}] isn't your", "Ok");
                 return;
             }
-            _lectureRep.Insert(dlg.lecture);
+            _service.Insert(new Subscription {
+                userID = _loginedUser.ID,
+                courseID = lecture.Course.ID,
+            });
+            _service.Insert(lecture);
             _lectureView.UpdateView();
         }
 
@@ -122,7 +145,7 @@ namespace UserInterface
 
             if (dlg.canceled) return;
 
-            _courseRep.Insert(dlg.course);
+            _service.Insert(dlg.course);
             _courseView.UpdateView();
         }
 
@@ -133,7 +156,7 @@ namespace UserInterface
             if (decision == 1) return;
 
             this.Visible = false;
-            AuthenticationWindow window = new AuthenticationWindow(_userRep);
+            AuthenticationWindow window = new AuthenticationWindow(_service);
             Application.Run(window);
             _loginedUser = window.User;
             SetUserInfo();
@@ -155,17 +178,12 @@ namespace UserInterface
             this.Add(_userInfo);
         }
 
-        public void SetRepositories(UserRepository userRepository, 
-            CourseRepository courseRepository, LectureRepository lectureRepository, 
-            SubscriptionRepository subscriptionRepository)
+        public void SetService(RemoteService service)
         {
-            _userRep = userRepository;
-            _courseRep = courseRepository;
-            _lectureRep = lectureRepository;
-            _subscriptionRep = subscriptionRepository;
-            _courseView.SetRepository(_courseRep, subscriptionRepository);
-            _userView.SetRepository(_userRep);
-            _lectureView.SetRepository(_lectureRep, _courseRep);
+            _service = service;
+            _courseView.SetService(service);
+            _lectureView.SetService(service);
+            _userView.SetService(service);
         }
 
         private void OnExport()
@@ -175,16 +193,20 @@ namespace UserInterface
 
             if (dlg.canceled) return;
 
-            CourseProcessor processor = new CourseProcessor(_courseRep, _lectureRep);
             try
             {
-                processor.Export(dlg.Word, dlg.FilePath);
+                _service.Export(dlg.Word, dlg.FilePath);
                 MessageBox.Query("Message", "Succesfull!", "Ok");
             }
             catch (System.Exception ex)
             {
                 MessageBox.ErrorQuery("Error", ex.Message, "Ok");
             }
+        }
+
+        private void OnHelp()
+        {
+            MessageBox.Query("About", "This is a simple program for courses managment.", "Ok");
         }
 
         private void OnImport()
@@ -197,10 +219,9 @@ namespace UserInterface
 
             if (dlg.Canceled) return;
 
-            CourseProcessor processor = new CourseProcessor(_courseRep, _lectureRep);
             try
             {
-                processor.Import(dlg.FilePath.ToString());
+                _service.Import(dlg.FilePath.ToString());
                 MessageBox.Query("Message", "Succesfull!", "Ok");
             }
             catch (System.Exception ex)

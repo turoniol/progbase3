@@ -1,14 +1,13 @@
 using EntitiesProcessingLib.Entities;
-using EntitiesProcessingLib.Repositories;
 using Terminal.Gui;
+using ServiceLib;
 
 namespace UserInterface
 {
     public class LectureInfo : Dialog
     {
         private User _loginedUser;
-        private CourseRepository _courseRep;
-        private LectureRepository _lectureRep;
+        private RemoteService _service;
         private TextField _idView;
         private TextField _themeView;
         private TextField _courseIDView;
@@ -85,15 +84,15 @@ namespace UserInterface
             {
                 LectureUpdate dlg = new LectureUpdate();
                 long id = long.Parse(_idView.Text.ToString());
-                dlg.SetLecture(_lectureRep.GetLecture(id));
+                dlg.SetLecture(_service.GetLecture(id));
                 Application.Run(dlg);
 
                 if (dlg.canceled)
                 {
                     return;
-                }            
+                }
                 var lecture = dlg.Lecture;
-                var course = _courseRep.GetCourse(lecture.Course.ID);
+                var course = _service.GetCourse(lecture.Course.ID);
                 if (course == null || course.Author.ID != _loginedUser.ID)
                 {
                     MessageBox.ErrorQuery("Error", $"The course with id [{lecture.Course.ID}] isn't your", "Ok");
@@ -101,7 +100,7 @@ namespace UserInterface
                 }
 
                 this.SetLecture(dlg.Lecture);
-                _lectureRep.Update(id, dlg.Lecture);
+                _service.Update(id, dlg.Lecture);
             }
             catch
             {
@@ -117,14 +116,13 @@ namespace UserInterface
                 return;
             }
 
-            _lectureRep.Delete(long.Parse(_idView.Text.ToString()));
+            _service.DeleteLecture(long.Parse(_idView.Text.ToString()));
             Application.RequestStop();
         }
 
-        public void SetRepository(LectureRepository lectureRepository, CourseRepository courseRepository)
+        public void SetService(RemoteService service)
         {
-            _lectureRep = lectureRepository;
-            _courseRep = courseRepository;
+            _service = service;
         }
 
         public void SetLecture(Lecture l)
@@ -134,7 +132,7 @@ namespace UserInterface
             _courseIDView.Text = l.Course.ID.ToString();
             _importedBox.Checked = l.IsImported;
 
-            var course = _courseRep.GetCourse(l.Course.ID);
+            var course = _service.GetCourse(l.Course.ID);
             if (course == null)
             {
                 _deleteBtn.Visible = false;

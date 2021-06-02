@@ -11,7 +11,8 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\libs\EntitiesProcessingLib\EntitiesProcessingLib.csproj" />
+    <ProjectReference Include="..\..\libs\EntitiesProcessingLib\EntitiesProcessingLib.csproj" />
+    <ProjectReference Include="..\..\libs\ServiceLib\ServiceLib.csproj" />
   </ItemGroup>
 
 </Project>

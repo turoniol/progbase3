@@ -71,6 +71,7 @@ namespace EntitiesProcessingLib.DataProcessing
         {
             var plt = new Plot(600, 400);
             var data = _courseRep.GetImageData(count);
+            count = data.Count;
             int len = data.Count;
 
             string[] labels = new string[len];

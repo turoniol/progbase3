@@ -1,6 +1,5 @@
 using EntitiesProcessingLib.Entities;
-using EntitiesProcessingLib.Repositories;
-using EntitiesProcessingLib.Authentication;
+using ServiceLib;
 using Terminal.Gui;
 
 namespace UserInterface
@@ -8,7 +7,7 @@ namespace UserInterface
     public class UserInfo : Dialog
     {
         private User _loginedUser;
-        private UserRepository _rep;
+        private RemoteService _service;
         private TextField _idView;
         private TextField _loginView;
         private TextField _fullnameView;
@@ -72,8 +71,7 @@ namespace UserInterface
                 }
 
                 this.SetUser(dlg.User);
-                Authenticator auth = new Authenticator(_rep);
-                auth.UpdateUser(dlg.User);
+                _service.UpdateUserAuth(dlg.User);
             }
             catch
             {
@@ -89,13 +87,13 @@ namespace UserInterface
                 return;
             }
 
-            _rep.Delete(long.Parse(_idView.Text.ToString()));
+            _service.DeleteUser(long.Parse(_idView.Text.ToString()));
             Application.RequestStop();
         }
 
-        public void SetRepository(UserRepository rep)
+        public void SetService(RemoteService service)
         {
-            _rep = rep;
+            _service = service;
         }
 
         public void SetUser(User l)

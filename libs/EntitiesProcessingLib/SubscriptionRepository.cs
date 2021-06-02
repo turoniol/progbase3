@@ -111,7 +111,7 @@ namespace EntitiesProcessingLib.Repositories
             _connection.Open();
             var command = _connection.CreateCommand();
 
-            command.CommandText = @"SELECT course_id, name
+            command.CommandText = @"SELECT course_id, name, author_id, imported, access
                 FROM users_courses, courses 
                 WHERE users_courses.user_id = $id AND users_courses.course_id = courses.id;";
             command.Parameters.AddWithValue("$id", listenerID);
@@ -125,6 +125,7 @@ namespace EntitiesProcessingLib.Repositories
                 course.Title = reader.GetString(1);
                 course.Author = new User { ID = long.Parse(reader.GetString(2)) };
                 course.IsImported = bool.Parse(reader.GetString(3));
+                course.CanSubcribe = bool.Parse(reader.GetString(4));
 
                 courses.Add(course);
             }
@@ -132,6 +133,36 @@ namespace EntitiesProcessingLib.Repositories
             _connection.Close();
 
             return courses;
+        }
+
+        public List<User> GetListenersByCourse(long courseID)
+        {
+            _connection.Open();
+            var command = _connection.CreateCommand();
+
+            command.CommandText = @"
+            SELECT users.id, users.login, users.password, users.fullname 
+            FROM users_courses, users
+            WHERE user_id = users.id AND
+                course_id = $id;";
+            command.Parameters.AddWithValue("$id", courseID);
+
+            List<User> listeners = new List<User>();
+            var reader = command.ExecuteReader();
+            while (reader.Read())
+            {
+                User listener = new User();
+                listener.ID = long.Parse(reader.GetString(0));
+                listener.Login = reader.GetString(1);
+                listener.Password = reader.GetString(2);
+                listener.Fullname = reader.GetString(3);
+
+                listeners.Add(listener);
+            }
+            reader.Close();
+            _connection.Close();
+
+            return listeners;
         }
     }
 }

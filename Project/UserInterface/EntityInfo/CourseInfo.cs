@@ -1,19 +1,18 @@
-using System;
+using ServiceLib;
 using EntitiesProcessingLib.Entities;
-using EntitiesProcessingLib.Repositories;
 using Terminal.Gui;
 
 namespace UserInterface
 {
     public class CourseInfo : Dialog
     {
-        private User _loginedUser;
-        private CourseRepository _courseRep;
-        private SubscriptionRepository _subscriptionRep;
+        private User _loginedUser;        
+        private RemoteService _service;
         private TextField _idView;
         private TextField _titleView;
         private TextField _authorIDView;
         private CheckBox _importedBox;
+        private CheckBox _isOpen;
         private Button _deleteBtn;
         private Button _updateBtn;
         private Button _subscribeBtn;
@@ -22,7 +21,7 @@ namespace UserInterface
         public CourseInfo()
         {
             this.Width = 60;
-            this.Height = 14;
+            this.Height = 16;
             Button okBtn = new Button("Ok");
             okBtn.Clicked += Application.RequestStop;
             this.AddButton(okBtn);
@@ -32,7 +31,8 @@ namespace UserInterface
             Label title = new Label(1, 1 * yShift, "Title: ");
             Label authorID = new Label(1, 2 * yShift, "Author ID: ");
             Label imported = new Label(1, 3 * yShift, "Is imported: ");
-            this.Add(id, title, authorID, imported);
+            Label open = new Label(1, 4 * yShift, "Is open:");
+            this.Add(id, title, authorID, imported, open);
 
             int xShift = 15;
             _idView = new TextField() {
@@ -45,22 +45,26 @@ namespace UserInterface
                 X = xShift, Y = 2 * yShift, ReadOnly = true, Width = 50,
             };
             _importedBox = new CheckBox() {
-                X = xShift, Y = 3* yShift,
+                X = xShift, Y = 3 * yShift,
             };
-            _importedBox.Toggled += OnToggled;
-            this.Add(_idView, _titleView, _authorIDView, _importedBox);
+            _isOpen = new CheckBox() {
+                X = xShift, Y = 4 * yShift,
+            };
+            _importedBox.Toggled += OnToggledImported;
+            _isOpen.Toggled += OnToggledOpen;
+            this.Add(_idView, _titleView, _authorIDView, _importedBox, _isOpen);
 
             _deleteBtn = new Button("Delete") {
-                X = 1, Y = 4 * yShift,
+                X = 1, Y = 5 * yShift,
             };
             _updateBtn = new Button("Update") {
-                X = 15, Y = 4 * yShift,
+                X = 15, Y = 5 * yShift,
             };
             _subscribeBtn = new Button("Subscribe") {
-                X = 1, Y = 4 * yShift,
+                X = 1, Y = 5 * yShift,
             };
             _unsubscribeBtn = new Button("Unsubscribe") {
-                X = 15, Y = 4 * yShift, Visible = false,
+                X = 15, Y = 5 * yShift, Visible = false,
             };
             _deleteBtn.Clicked += OnDelete;
             _updateBtn.Clicked += OnUpdate;
@@ -72,14 +76,20 @@ namespace UserInterface
 
         private void OnUnsubscribe()
         {
-            var sub = _subscriptionRep.GetSubscription(_loginedUser.ID, long.Parse(_idView.Text.ToString()));
-            _subscriptionRep.Delete(sub.id);
+            var sub = _service.GetSubscription(new Subscription {
+                userID = _loginedUser.ID, 
+                courseID = long.Parse(_idView.Text.ToString()),
+            });
+            _service.DeleteSubscription(sub.id);
             SetVisibility();
         }
 
         private void OnSubscribe()
         {
-            _subscriptionRep.Insert(_loginedUser.ID, long.Parse(_idView.Text.ToString()));
+            _service.Insert(new Subscription {
+                userID = _loginedUser.ID, 
+                courseID = long.Parse(_idView.Text.ToString()),
+            });
             SetVisibility();
         }
 
@@ -95,7 +105,7 @@ namespace UserInterface
             {
                 CourseUpdate dlg = new CourseUpdate();
                 long id = long.Parse(_idView.Text.ToString());
-                dlg.SetCourse(_courseRep.GetCourse(id));
+                dlg.SetCourse(_service.GetCourse(id));
                 Application.Run(dlg);
 
                 if (dlg.canceled)
@@ -104,7 +114,7 @@ namespace UserInterface
                 }
 
                 this.SetCourse(dlg.Course);
-                _courseRep.Update(id, dlg.Course);
+                _service.Update(id, dlg.Course);
             }
             catch
             {
@@ -120,14 +130,25 @@ namespace UserInterface
                 return;
             }
 
-            _courseRep.Delete(long.Parse(_idView.Text.ToString()));
+            long courseId = long.Parse(_idView.Text.ToString());
+            var sub = _service.GetSubscription(new Subscription
+            {
+                userID = _loginedUser.ID,
+                courseID = courseId,
+            });
+            if (sub != null)
+            {
+                _service.DeleteSubscription(sub.id);
+            }
+
+            _service.DeleteCourse(courseId);
+            _service.DeleteLectures(courseId);
             Application.RequestStop();
         }
 
-        public void SetRepository(CourseRepository courseRep, SubscriptionRepository subRep)
+        public void SetService(RemoteService service)
         {
-            _courseRep = courseRep;
-            _subscriptionRep = subRep;
+            _service = service;
         }
 
         public void SetCourse(Course d)
@@ -136,6 +157,7 @@ namespace UserInterface
             _titleView.Text = d.Title;
             _authorIDView.Text = d.Author.ID.ToString();
             _importedBox.Checked = d.IsImported;
+            _isOpen.Checked = d.CanSubcribe;
 
             SetVisibility();
         }
@@ -145,19 +167,29 @@ namespace UserInterface
             bool isAuthor = _loginedUser.ID == long.Parse(_authorIDView.Text.ToString());
             _deleteBtn.Visible = isAuthor;
             _updateBtn.Visible = isAuthor;
-            _subscribeBtn.Visible = !isAuthor;
+            _subscribeBtn.Visible = !isAuthor && _isOpen.Checked;
             _unsubscribeBtn.Visible = false;
 
-            if (_subscriptionRep.GetSubscription(_loginedUser.ID, long.Parse(_idView.Text.ToString())) != null)
+            var sub = _service.GetSubscription(new Subscription {
+                userID = _loginedUser.ID, 
+                courseID = long.Parse(_idView.Text.ToString()),
+            });
+
+            if (sub != null)
             {
                 _subscribeBtn.Visible = false;
                 _unsubscribeBtn.Visible = true;
             }
         }
 
-        private void OnToggled(bool obj)
+        private void OnToggledImported(bool obj)
         {
             _importedBox.Checked = obj;
+        }
+
+        private void OnToggledOpen(bool obj)
+        {
+            _isOpen.Checked = obj;
         }
     }
 }

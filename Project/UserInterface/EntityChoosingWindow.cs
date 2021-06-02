@@ -1,6 +1,5 @@
 using Terminal.Gui;
 using System;
-using System.Collections.Generic;
 
 namespace UserInterface
 {

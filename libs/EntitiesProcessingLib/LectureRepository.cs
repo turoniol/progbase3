@@ -125,6 +125,18 @@ namespace EntitiesProcessingLib.Repositories
             
             return count == 1;
         }
+
+        public bool DeleteLectures(long courseID)
+        {
+            _connection.Open();
+            var command = _connection.CreateCommand();
+            command.CommandText = @"DELETE FROM lectures WHERE course_id = $course_id";
+            command.Parameters.AddWithValue("$course_id", courseID);
+            int count = command.ExecuteNonQuery();
+            _connection.Close();
+            
+            return count != 0;
+        }
    
         public long GetTotalCount(string theme)
         {
@@ -201,6 +213,10 @@ namespace EntitiesProcessingLib.Repositories
                 Lecture lecture = new Lecture();
                 lecture.ID = long.Parse(reader.GetString(0));
                 lecture.Theme = reader.GetString(1);
+                lecture.Course = new Course {
+                    ID = long.Parse(reader.GetString(2)),
+                };
+                lecture.IsImported = bool.Parse(reader.GetString(3));
                 lectures.Add(lecture);
             }
             reader.Close();

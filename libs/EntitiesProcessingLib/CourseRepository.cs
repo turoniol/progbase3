@@ -56,7 +56,7 @@ namespace EntitiesProcessingLib.Repositories
             command.Parameters.AddWithValue("$id", id);
             command.Parameters.AddWithValue("$name", course.Title);
             command.Parameters.AddWithValue("$author_id", course.Author.ID);
-            command.Parameters.AddWithValue("$imported", course.IsImported);
+            command.Parameters.AddWithValue("$imported", "True");
 
             long insertedID = (long)command.ExecuteScalar();
             _connection.Close();            
@@ -83,6 +83,7 @@ namespace EntitiesProcessingLib.Repositories
                     ID = long.Parse(reader.GetString(2)),
                 };
                 course.IsImported = bool.Parse(reader.GetString(3));
+                course.CanSubcribe = bool.Parse(reader.GetString(4));
             }
 
             reader.Close();
@@ -100,13 +101,15 @@ namespace EntitiesProcessingLib.Repositories
                 UPDATE courses 
                 SET 
                 name = $name,
-                author_id = $author_id 
+                author_id = $author_id,
+                access = $access
                 WHERE id = $id;
             ";
             command.Parameters.AddWithValue("$id", ID);
             command.Parameters.AddWithValue("$name", course.Title);
             command.Parameters.AddWithValue("$author_id", course.Author.ID);
-            
+            command.Parameters.AddWithValue("$access", course.CanSubcribe.ToString());
+
             int count = command.ExecuteNonQuery();
             _connection.Close();            
 
@@ -191,6 +194,7 @@ namespace EntitiesProcessingLib.Repositories
                         Title = reader.GetString(1),
                         Author = new User { ID = long.Parse(reader.GetString(2)) },
                         IsImported = bool.Parse(reader.GetString(3)),
+                        CanSubcribe = bool.Parse(reader.GetString(4)),
                     }
                 );
             }
@@ -232,6 +236,7 @@ namespace EntitiesProcessingLib.Repositories
                         Title = reader.GetString(1),
                         Author = new User { ID = long.Parse(reader.GetString(2)) },
                         IsImported = bool.Parse(reader.GetString(3)),
+                        CanSubcribe = bool.Parse(reader.GetString(4)),
                     }
                 );
             }
@@ -248,7 +253,7 @@ namespace EntitiesProcessingLib.Repositories
 
         public int GetTotalPagesCount(int pageSize, long authorID, string name)
         {
-            return (int) System.Math.Ceiling(GetTotalCount(name) / (float) pageSize);
+            return (int) System.Math.Ceiling(GetTotalCount(authorID, name) / (float) pageSize);
         }
 
         public List<Course> GetCoursesByAuthor(long authorID)
@@ -303,7 +308,7 @@ namespace EntitiesProcessingLib.Repositories
             var command = _connection.CreateCommand();
 
             command.CommandText = @"
-                SELECT theme, courses.id, name, lectures.id
+                SELECT theme, courses.id, name, lectures.id, courses.author_id, courses.access
                 FROM lectures, courses 
                 WHERE courses.name LIKE '%' || $value || '%' AND 
                     lectures.course_id = courses.id;
@@ -319,6 +324,8 @@ namespace EntitiesProcessingLib.Repositories
                 string courseName = reader.GetString(2);
                 string lectureTheme = reader.GetString(0);
                 long lectureID = long.Parse(reader.GetString(3));
+                long authorID = long.Parse(reader.GetString(4));
+                bool cabSubs = bool.Parse(reader.GetString(5));
                 
                 Lecture lecture = new Lecture() { ID = lectureID, Theme = lectureTheme, };
                 Course course = null;
@@ -329,6 +336,8 @@ namespace EntitiesProcessingLib.Repositories
                     course.ID = ID;
                     course.Title = courseName;
                     course.Lectures = new List<Lecture>();
+                    course.Author = new User {ID = authorID};
+                    course.CanSubcribe = cabSubs;
                     courses.Add(ID, course);
                 }
 
@@ -383,6 +392,7 @@ namespace EntitiesProcessingLib.Repositories
             _connection.Close();
             
             var sorted = EntitiesProcessingLib.DataProcessing.CourseProcessor.SortByListeners(coursesDictionary);
+            n = System.Math.Min(sorted.Count, n);
             List<Course> result = new List<Course>(sorted.GetRange(0, n));
 
             return result;

@@ -1,38 +1,49 @@
 using Terminal.Gui;
 using EntitiesProcessingLib.Repositories;
 using EntitiesProcessingLib.Entities;
+using ServiceLib;
 using NStack;
 
 namespace UserInterface
 {
-    public class LectureView : Window
+    public class CourseView : Window
     {
         private int _pageSize = 15;
-        private int _totalPages;
         private int _page = 1;
+        private long _authorID = -1;
+        private int _totalPages;
         private User _loginedUser;
         private ListView _view;
-        private LectureRepository _lectureRep;
-        private CourseRepository _courseRep;
+        private RemoteService _service;
         private Label _pageLabel;
         private Button _prevPage;
         private Button _nextPage;
+        private CheckBox _onlyUser;
         private TextField _searchField;
 
-        public LectureView()
+        public CourseView()
         {
             FrameView frame = new FrameView
             {
-                Title = "Lectures",
+                Title = "Courses",
                 X = 0,
                 Y = 4, 
                 Width = Dim.Fill(),
                 Height = Dim.Fill(),
             };
+            Label onlyUser = new Label("I'm the author") {
+                X = Pos.Percent(70), Y = 3,
+            };
             _view = new ListView
             {
                 Width = Dim.Fill(),
                 Height = Dim.Fill(),
+            };
+            _onlyUser = new CheckBox() {
+                X = Pos.Percent(70) + "I'm the author".Length + 1, Y = 3,
+            };
+            _searchField = new TextField() {
+                X = 2, Y = 3, Width = 40,
             };
             frame.Add(_view);
             this.Add(frame);
@@ -40,33 +51,47 @@ namespace UserInterface
             _prevPage = new Button(2, 2, "Prev");
             _nextPage = new Button(20, 2, "Next");
             _pageLabel = new Label(12, 2, "??? / ???");
-            _searchField = new TextField() {
-                X = 2, Y = 3, Width = 40,
-            };
 
             _prevPage.Clicked += OnPrev;
             _nextPage.Clicked += OnNext;
             _view.OpenSelectedItem += OnItemOpen;
+            _onlyUser.Toggled += OnToggled;
             _searchField.TextChanged += OnSearch;
             
-            this.Add(_prevPage, _pageLabel, _nextPage, _searchField);
+            this.Add(onlyUser, _onlyUser, _searchField);
+            this.Add(_prevPage, _pageLabel, _nextPage);
         }
- 
-        public void LoginUser(User user) => _loginedUser = user;
 
         private void OnSearch(ustring obj)
         {
             UpdateView();
         }
 
+        public void LoginUser(User user)
+        {
+            _loginedUser = user;
+            OnToggled(true);
+        }
+
+        private void OnToggled(bool previous)
+        {
+            _authorID = _onlyUser.Checked ? _loginedUser.ID : -1;
+            if (_service != null)
+            {
+                UpdateView();
+            }
+        }
+
         private void OnItemOpen(ListViewItemEventArgs obj)
         {
-            Lecture selected = (Lecture) obj.Value;
-            LectureInfo dlg = new LectureInfo();
+            Course selected = (Course) obj.Value;
+            CourseInfo dlg = new CourseInfo();
             dlg.LoginUser(_loginedUser);
-            dlg.SetRepository(_lectureRep, _courseRep);
-            dlg.SetLecture(selected);
+            dlg.SetService(_service);
+            dlg.SetCourse(selected);
+            Application.Top.Add(dlg);
             Application.Run(dlg);
+            Application.Top.Remove(dlg);
             UpdateView();
         }
 
@@ -82,23 +107,26 @@ namespace UserInterface
             UpdateView();
         }
 
-        public void SetRepository(LectureRepository lectureRepository, CourseRepository courseRepository)
+        public void SetService(RemoteService service)
         {
-            _lectureRep = lectureRepository;
-            _courseRep = courseRepository;
+            _service = service;
             UpdateView();
         }
 
         public void UpdateView()
         {
             string name = _searchField.Text.ToString();
-            _totalPages = _lectureRep.GetTotalPagesCount(_pageSize, name);
+            _totalPages = _service.GetTotalPagesCountCourse(_pageSize, _authorID, name);
+            
+            _page = _page > _totalPages ? _totalPages : _page;
+            _page = _page == 0 ? 1 : _page;
+            
             _prevPage.Visible = (_page != 1);
             _nextPage.Visible = (_page != _totalPages);
 
-            _view.SetSource(_lectureRep.GetPage(_page, _pageSize, name));
+            _view.SetSource(_service.GetPageCourse(_page, _pageSize, name, _authorID));
             _pageLabel.Text = $"{_page} / {_totalPages}";
-
+            
             if (_totalPages == 0)
             {
                 _prevPage.Visible = false;
