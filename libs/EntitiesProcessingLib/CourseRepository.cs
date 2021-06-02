@@ -1,6 +1,8 @@
 using Microsoft.Data.Sqlite;
 using System.Collections.Generic;
 using EntitiesProcessingLib.Entities;
+using EntitiesProcessingLib.DataProcessing;
+using System.Linq;
 
 namespace EntitiesProcessingLib.Repositories
 {
@@ -126,6 +128,18 @@ namespace EntitiesProcessingLib.Repositories
             _connection.Close();
             
             return count == 1;
+        }
+
+        public bool DeleteCourses(long authorID)
+        {
+            _connection.Open();
+            var command = _connection.CreateCommand();
+            command.CommandText = @"DELETE FROM courses WHERE author_id = $id";
+            command.Parameters.AddWithValue("$id", authorID);
+            int count = command.ExecuteNonQuery();
+            _connection.Close();
+            
+            return count != 0;
         }
    
         public long GetTotalCount(string name)
@@ -377,7 +391,7 @@ namespace EntitiesProcessingLib.Repositories
 
                 if (!coursesDictionary.TryGetValue(ID, out course))
                 {
-                    course = new Course(){
+                    course = new Course() {
                         ID = ID, 
                         Title = reader.GetString(2),
                         Subscribers = new List<User>(),
@@ -391,7 +405,7 @@ namespace EntitiesProcessingLib.Repositories
             reader.Close();
             _connection.Close();
             
-            var sorted = EntitiesProcessingLib.DataProcessing.CourseProcessor.SortByListeners(coursesDictionary);
+            var sorted = CourseProcessor.SortByListeners(coursesDictionary.Values.ToList());
             n = System.Math.Min(sorted.Count, n);
             List<Course> result = new List<Course>(sorted.GetRange(0, n));
 

@@ -44,6 +44,27 @@ namespace EntitiesProcessingLib.Repositories
             return id;
         }
 
+        public long Insert(long userId, User user)
+        {
+            _connection.Open();
+            var command = _connection.CreateCommand();
+            command.CommandText = 
+            @"
+                INSERT INTO users (id, login, password, fullname)
+                VALUES ($id, $login, $password, $fullname);
+                SELECT last_insert_rowid();
+            ";
+            command.Parameters.AddWithValue("$id", userId);
+            command.Parameters.AddWithValue("$login", user.Login);
+            command.Parameters.AddWithValue("$password", user.Password);
+            command.Parameters.AddWithValue("$fullname", user.Fullname);
+
+            long id = (long)command.ExecuteScalar();
+            _connection.Close();            
+
+            return id;
+        }
+
         public User GetUser(long id)
         {
             _connection.Open();

@@ -20,7 +20,22 @@ class Program
         _userRep = new UserRepository(dataBaseFilePath);
         _subRep = new SubscriptionRepository(dataBaseFilePath);
 
-        ParseArgs(args);
+
+        foreach (var id in _courseRep.GetAllIDs())
+        {
+            var course = _courseRep.GetCourse(id);
+            var authorID = course.Author.ID;
+            User user = _userRep.GetUser(authorID);
+            if (user == null)
+            {
+                _userRep.Insert(authorID, new User {
+                    Login = $"newUser{authorID}",
+                    Password = "96cae35ce8a9b0244178bf28e4966c2ce1b8385723a96a6b838858cdd6ca0a1e",
+                    Fullname = "name for filling",
+                });
+            }
+        }
+        // ParseArgs(args);
     }
 
     static void ParseArgs(string[] args)

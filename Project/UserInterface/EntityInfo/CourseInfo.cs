@@ -178,7 +178,7 @@ namespace UserInterface
             if (sub != null)
             {
                 _subscribeBtn.Visible = false;
-                _unsubscribeBtn.Visible = true;
+                _unsubscribeBtn.Visible = true && !isAuthor;
             }
         }
 

@@ -48,7 +48,10 @@ namespace UserInterface
             _lectureView = new LectureView() { Visible = false, };
             _userView = new UserView() { Visible = false, };
             _courseView = new CourseView();
+
+            _userView.UserDeleted += OnLogout;
             Login(user);
+            
             int choosingWinHeight = 10, choosingWinWidth = 30;
             _choosingWin = new EntityChoosingWindow()
             {
@@ -68,17 +71,12 @@ namespace UserInterface
             SetUserInfo();
         }
 
+
         private void OnReport()
         {
-            ReportDialog dlg = new ReportDialog();
-            Application.Run(dlg);
-
-            if (dlg.canceled) return;
-
             try
             {
-                _service.Export(dlg.Word, dlg.FilePath);
-                MessageBox.Query("Message", "Succesfull!", "Ok");
+                _service.GenerateReport();
             }
             catch (System.Exception ex)
             {
@@ -130,10 +128,7 @@ namespace UserInterface
                 MessageBox.ErrorQuery("Error", $"The course with id [{lecture.Course.ID}] isn't your", "Ok");
                 return;
             }
-            _service.Insert(new Subscription {
-                userID = _loginedUser.ID,
-                courseID = lecture.Course.ID,
-            });
+            
             _service.Insert(lecture);
             _lectureView.UpdateView();
         }

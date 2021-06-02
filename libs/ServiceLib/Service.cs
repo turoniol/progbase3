@@ -24,18 +24,40 @@ namespace ServiceLib
 
         public bool DeleteCourse(long id) => _courseRep.Delete(id);
 
+        public bool DeleteCourses(long authorID)
+        {
+            var courses = _courseRep.GetCoursesByAuthor(authorID);
+
+            foreach (var course in courses)
+            {
+                _lectureRep.DeleteLectures(course.ID);
+            }
+            return _courseRep.DeleteCourses(authorID);
+        }
+
         public bool DeleteLecture(long id) => _lectureRep.Delete(id);
 
         public bool DeleteLectures(long courseID) => _lectureRep.DeleteLectures(courseID);
 
         public bool DeleteSubscription(long id) => _subRep.Delete(id);
 
-        public bool DeleteUser(long id) => _userRep.Delete(id);
-
-        public void DrawPlot(int count, string imagePath)
+        public bool DeleteUser(long id)
         {
-            CourseProcessor proc = new CourseProcessor(_courseRep, _lectureRep);
-            proc.DrawPlot(count, imagePath);
+            var courses = _subRep.GetCoursesByListener(id);
+
+            foreach (var course in courses)
+            {
+                var sub = _subRep.GetSubscription(id, course.ID);
+                _subRep.Delete(sub.id);
+            }
+
+            return _userRep.Delete(id);
+        }
+
+        public void GenerateReport()
+        {
+            ReportGenerator generator = new ReportGenerator();
+            generator.ReadFile(_courseRep, _subRep, _lectureRep, _userRep);
         }
 
         public void Export(string courseWord, string exportFilePath)
@@ -56,6 +78,11 @@ namespace ServiceLib
             if (subscriberID == -1)
             {
                 return _lectureRep.GetPage(pageNumber, pageSize, theme);
+            }
+
+            if (GetTotalPagesCountLecture(pageSize, theme, subscriberID) == 0)
+            {
+                return new List<Lecture>();
             }
 
             if (pageNumber < 1 || pageNumber > GetTotalPagesCountLecture(pageSize, theme, subscriberID))
@@ -106,7 +133,7 @@ namespace ServiceLib
                 var list = _lectureRep.GetLecturesByCourse(course.ID);
                 lectures.AddRange(list);
             }
-            
+
             return lectures;
         }
 

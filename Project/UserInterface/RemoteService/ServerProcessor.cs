@@ -2,6 +2,7 @@ using System.Xml.Serialization;
 using System.Text;
 using System.IO;
 using System.Net.Sockets;
+using Terminal.Gui;
 
 namespace ServiceLib
 {
@@ -13,7 +14,14 @@ namespace ServiceLib
 
             byte[] msg = Encoding.ASCII.GetBytes(msgSent);
 
-            int bytesSent = sender.Send(msg);
+            try
+            {
+                int bytesSent = sender.Send(msg);
+            }
+            catch (System.Exception ex)
+            {
+                MessageBox.ErrorQuery("Error", ex.Message, "Ok");
+            }
 
             return ParseEntity<T>(ReadAllMessage(sender));
         }
@@ -28,17 +36,26 @@ namespace ServiceLib
             string data = string.Empty;
             byte[] bytes = new byte[1024];
 
-            int bytesRec = sender.Receive(bytes);
-            string message = Encoding.ASCII.GetString(bytes, 0, bytesRec);
-            string[] splited = message.Split("<DEL>", 2);
-            int count = int.Parse(splited[0]);
-
-            data += splited[1];
-
-            while (count > data.Length)
+            int bytesRec = 0;
+            try
             {
-                int nBytes = sender.Receive(bytes);
-                data += Encoding.ASCII.GetString(bytes, 0, nBytes);
+                bytesRec = sender.Receive(bytes);
+                string message = Encoding.ASCII.GetString(bytes, 0, bytesRec);
+                string[] splited = message.Split("<DEL>", 2);
+                int count = int.Parse(splited[0]);
+
+                data += splited[1];
+
+                while (count > data.Length)
+                {
+                    int nBytes = sender.Receive(bytes);
+                    data += Encoding.ASCII.GetString(bytes, 0, nBytes);
+                }
+            }
+            catch (System.Exception ex)
+            {
+                MessageBox.ErrorQuery("Error", ex.Message, "Ok");
+                data = "Error";
             }
 
             return data;

@@ -26,7 +26,7 @@ namespace Server
             functions.Add("updateAuth", OnUpdateUserAuth);
             functions.Add("export", OnExport);
             functions.Add("import", OnImport);
-            functions.Add("draw", OnDrawPlot);
+            functions.Add("report", OnReport);
             functions.Add("insert", OnInsert);
             functions.Add("get", OnGet);
             functions.Add("update", OnUpdate);
@@ -115,7 +115,7 @@ namespace Server
 
             _service.Export(courseName, exportFilePath);
 
-            return "Succesfull!";
+            return EntityToXml("Succesfull!");
         }
 
         private string OnImport(string[] data)
@@ -128,22 +128,19 @@ namespace Server
             string importFilePath = GetEntity<string>(data[1]);
             _service.Import(importFilePath);
 
-            return "Succesfull!";
+            return EntityToXml("Succesfull!");
         }
 
-        private string OnDrawPlot(string[] data)
+        private string OnReport(string[] data)
         {
-            if (data.Length != 3)
+            if (data.Length != 1)
             {
                 throw new ArgumentException();
             }
 
-            int count = GetEntity<int>(data[1]);
-            string imagePath = GetEntity<string>(data[2]);
+            _service.GenerateReport();
 
-            _service.DrawPlot(count, imagePath);
-
-            return "Succesfull!";
+            return EntityToXml("Succesfull!");
         }
 
         private string OnInsert(string[] data)
@@ -267,6 +264,10 @@ namespace Server
             else if (entityType == "course")
             {
                 deleted = _service.DeleteCourse(id);
+            }
+            else if (entityType == "courses")
+            {
+                deleted = _service.DeleteCourses(id);
             }
             else if (entityType == "lecture")
             {

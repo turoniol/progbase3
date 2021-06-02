@@ -38,6 +38,15 @@ namespace ServiceLib
             return ServerProcessor.SendRequest<bool>(_sender, command);
         }
 
+        public bool DeleteCourses(long authorID)
+        {
+            string command = "delete";
+            command = ServerProcessor.AddAgrument(command, "courses");
+            command = ServerProcessor.AddAgrument(command, authorID);
+
+            return ServerProcessor.SendRequest<bool>(_sender, command);
+        }
+
         public bool DeleteLecture(long id)
         {
             string command = "delete";
@@ -70,11 +79,9 @@ namespace ServiceLib
             return ServerProcessor.SendRequest<bool>(_sender, command);
         }
 
-        public void DrawPlot(int count, string imagePath)
+        public void GenerateReport()
         {
-            string command = "draw";
-            command = ServerProcessor.AddAgrument(command, command);
-            command = ServerProcessor.AddAgrument(command, imagePath);
+            string command = "report";
             ServerProcessor.SendRequest<string>(_sender, command);
         }
 

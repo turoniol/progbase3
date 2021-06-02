@@ -6,6 +6,7 @@ namespace UserInterface
 {
     public class UserInfo : Dialog
     {
+        public bool deleted = false;
         private User _loginedUser;
         private RemoteService _service;
         private TextField _idView;
@@ -87,7 +88,11 @@ namespace UserInterface
                 return;
             }
 
-            _service.DeleteUser(long.Parse(_idView.Text.ToString()));
+            deleted = true;
+
+            long id = long.Parse(_idView.Text.ToString());
+            _service.DeleteUser(id);
+            _service.DeleteCourses(id);
             Application.RequestStop();
         }
 

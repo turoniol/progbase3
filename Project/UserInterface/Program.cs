@@ -21,22 +21,22 @@ catch (Exception ex)
 
 Rect frame = new Rect(4, 8, top.Frame.Width, 200);
 
-// try
+try
 {
-    // AuthenticationWindow authWindow = new AuthenticationWindow(service);
-    // Application.Run(authWindow);
+    AuthenticationWindow authWindow = new AuthenticationWindow(service);
+    Application.Run(authWindow);
 
     var admin = service.GetUser(23);
-    MainWindow mainWindow = new MainWindow(admin);
+    // MainWindow mainWindow = new MainWindow(admin);
 
-    // MainWindow mainWindow = new MainWindow(authWindow.User);
+    MainWindow mainWindow = new MainWindow(authWindow.User);
     mainWindow.SetService(service);
     top.Add(mainWindow);
     Application.Run();
 }
-// catch (System.Exception ex)
-// {
-//     MessageBox.ErrorQuery("Error", ex.Message, "Ok");
-// }
+catch (System.Exception ex)
+{
+    MessageBox.ErrorQuery("Error", ex.Message, "Ok");
+}
 
 service.Close();

@@ -1,6 +1,4 @@
-using System;
 using EntitiesProcessingLib.Entities;
-using EntitiesProcessingLib.Repositories;
 using Terminal.Gui;
 
 namespace UserInterface

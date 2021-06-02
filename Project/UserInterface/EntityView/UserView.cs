@@ -1,5 +1,5 @@
 using Terminal.Gui;
-using EntitiesProcessingLib.Repositories;
+using System;
 using EntitiesProcessingLib.Entities;
 using NStack;
 using ServiceLib;
@@ -8,6 +8,7 @@ namespace UserInterface
 {
     public class UserView : Window
     {
+        public event Action UserDeleted;
         private int _pageSize = 15;
         private int _totalPages;
         private int _page = 1;
@@ -70,6 +71,12 @@ namespace UserInterface
             dlg.SetUser(selected);
             dlg.SetService(_service);
             Application.Run(dlg);
+
+            if (dlg.deleted)
+            {
+                UserDeleted?.Invoke();
+            }
+
             UpdateView();
         }
 

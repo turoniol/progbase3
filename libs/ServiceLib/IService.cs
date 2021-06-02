@@ -13,7 +13,7 @@ namespace ServiceLib
         // data processing
         void Export(string courseWord, string exportFilePath);
         void Import(string dataPath);
-        void DrawPlot(int count, string imagePath);
+        void GenerateReport();
 
         // repositories
         long Insert(User user);
@@ -29,6 +29,7 @@ namespace ServiceLib
         bool Update(long ID, Lecture lecture);
         bool DeleteUser(long id);
         bool DeleteCourse(long id);
+        bool DeleteCourses(long authorId);
         bool DeleteLecture(long id);
         bool DeleteLectures(long courseID);
         bool DeleteSubscription(long id);
@@ -38,6 +39,5 @@ namespace ServiceLib
         int GetTotalPagesCountUser(int pageSize, string login);
         int GetTotalPagesCountCourse(int pageSize, long authorID, string name);
         int GetTotalPagesCountLecture(int pageSize, string theme, long subscriberID);
-        void GenerateReport(string folderPath);
     }
 }

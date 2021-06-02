@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using System.Xml.Serialization;
 using System.IO;
+using System.Linq;
 using EntitiesProcessingLib.Entities;
 using EntitiesProcessingLib.Repositories;
 using ScottPlot;
@@ -28,18 +29,18 @@ namespace EntitiesProcessingLib.DataProcessing
             }
 
             var serializer = new XmlSerializer(typeof(Root));
-            var writer = new StreamWriter(exportFilePath);  
+            var writer = new StreamWriter(exportFilePath);
 
-            serializer.Serialize(writer, new Root() {courses = courses});
+            serializer.Serialize(writer, new Root() { courses = courses });
             writer.Close();
         }
-   
+
         public void Import(string dataPath)
         {
             XmlSerializer ser = new XmlSerializer(typeof(Root));
             StreamReader sr = new StreamReader(dataPath);
 
-            var root = (Root) ser.Deserialize(sr);
+            var root = (Root)ser.Deserialize(sr);
             foreach (var course in root.courses)
             {
                 if (_courseRep.GetCourse(course.ID) != null)
@@ -66,7 +67,7 @@ namespace EntitiesProcessingLib.DataProcessing
             }
             sr.Close();
         }
-    
+
         public void DrawPlot(int count, string imagePath)
         {
             var plt = new Plot(600, 400);
@@ -86,48 +87,82 @@ namespace EntitiesProcessingLib.DataProcessing
             {
                 xs[i] = i + 1;
             }
-        
+
             plt.PlotBar(xs, ys, horizontal: true);
             plt.Grid(enableHorizontal: false, lineStyle: LineStyle.Dot);
             plt.YTicks(xs, labels);
 
             plt.SaveFig(imagePath);
         }
-        
-        public static List<Course> SortByListeners(Dictionary<long, Course> coursesDictionary)
+
+        public static List<Course> SortByLectures(List<Course> courses)
         {
-            Dictionary<int, List<long>> counts = new Dictionary<int, List<long>>();
-            foreach (var course in coursesDictionary.Values)
+            Dictionary<int, List<Course>> dictionary = new Dictionary<int, List<Course>>();
+
+            foreach (var course in courses)
             {
-                int count = course.Subscribers.Count;
-                List<long> ids = null;
-                if (!counts.TryGetValue(count, out ids))
+                List<Course> list = null;
+                int lecturesCount = course.Lectures.Count;
+
+                if (!dictionary.TryGetValue(lecturesCount, out list))
                 {
-                    ids = new List<long>();
-                    counts.Add(count, ids);
+                    list = new List<Course>();
+                    dictionary.Add(lecturesCount, list);
                 }
-                if (!ids.Contains(course.ID))
+
+                list.Add(course);
+            }
+
+            var counts = dictionary.Keys.ToList();
+            counts.Sort();
+
+            List<Course> result = new List<Course>();
+            for (int i = 0; i < counts.Count; ++i)
+            {
+                int j = counts.Count - i - 1;
+                foreach (var course in dictionary[counts[j]])
                 {
-                    ids.Add(course.ID);
+                    result.Add(course);
                 }
             }
-            List<int> sortedCounts = new List<int>(counts.Keys);
+
+            return result;
+        }
+
+        public static List<Course> SortByListeners(List<Course> courses)
+        {
+            Dictionary<int, List<Course>> counts = new Dictionary<int, List<Course>>();
+            foreach (var course in courses)
+            {
+                int count = course.Subscribers.Count;
+                List<Course> list = null;
+
+                if (!counts.TryGetValue(count, out list))
+                {
+                    list = new List<Course>();
+                    counts.Add(count, list);
+                }
+
+                list.Add(course);
+            }
+
+            List<int> sortedCounts = counts.Keys.ToList();
             sortedCounts.Sort();
 
             List<Course> sorted = new List<Course>();
             for (int i = 0; i < sortedCounts.Count; ++i)
             {
                 int j = sortedCounts.Count - 1 - i;
-                foreach (var id in counts[sortedCounts[j]])
+                foreach (var course in counts[sortedCounts[j]])
                 {
-                    sorted.Add(coursesDictionary[id]);
+                    sorted.Add(course);
                 }
             }
 
             return sorted;
         }
     }
-    
+
     [XmlRoot("courses")]
     public class Root
     {
