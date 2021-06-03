@@ -140,7 +140,11 @@ namespace UserInterface
 
             if (dlg.canceled) return;
 
-            _service.Insert(dlg.course);
+            long courseid = _service.Insert(dlg.course);
+            _service.Insert(new Subscription{
+                userID = _loginedUser.ID,
+                courseID = courseid,
+            });
             _courseView.UpdateView();
         }
 
