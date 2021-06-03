@@ -46,6 +46,9 @@ namespace UserInterface
             _importedBox = new CheckBox() {
                 X = xShift, Y = 3* yShift,
             };
+
+            _courseIDView.TextChanging += OnCourseIDInput;
+
             this.Add(_idView, _themeView, _courseIDView, _importedBox);
         }
 
@@ -74,6 +77,18 @@ namespace UserInterface
             _themeView.Text = l.Theme;
             _courseIDView.Text = l.Course.ID.ToString();
             _importedBox.Checked = l.IsImported;
+        }
+
+        private void OnCourseIDInput(TextChangingEventArgs args)
+        {
+            foreach (var c in args.NewText)
+            {
+                if (!char.IsDigit((char) c))
+                {
+                    args.Cancel = true;
+                    return;
+                }
+            }
         }
     }
 }

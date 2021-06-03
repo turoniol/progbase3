@@ -39,7 +39,7 @@ namespace UserInterface
                 X = xShift, Y = 0 * yShift, Width = 50, ReadOnly = true,
             };
             _loginView = new TextField() {
-                X = xShift, Y = 1 * yShift, Width = 50,
+                X = xShift, Y = 1 * yShift, Width = 50, ReadOnly = true,
             };
             _passwordView = new TextField() {
                 X = xShift, Y = 2 * yShift, Width = 50, Secret = true,
