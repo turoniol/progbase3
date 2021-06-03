@@ -176,8 +176,8 @@ namespace EntitiesProcessingLib.Repositories
                 FROM users_courses, lectures
                 WHERE lectures.theme LIKE '%' || $value || '%' AND
                     users_courses.user_id = $id AND
-                    users_courses.course_id = lectures.course_id;
-                            LIMIT $page_size OFFSET $page_number;
+                    users_courses.course_id = lectures.course_id
+                LIMIT $page_size OFFSET $page_number;
             ";
             command.Parameters.AddWithValue("$page_size", pageSize);
             command.Parameters.AddWithValue("$page_number", (pageNumber - 1) * pageSize);
