@@ -32,7 +32,7 @@ namespace UserInterface
                 {
                     new MenuItem("_Export...", "Export courses into XML", OnExport),
                     new MenuItem("_Import...", "Import courses from XML", OnImport),
-                    new MenuItem("_Generate report...", "Generate .docx file", OnReport),
+                    new MenuItem("_Generate report", "Generate .docx file", OnReport),
                     new MenuItem("_Quit", "Quit program", Application.RequestStop),
                 }),
                 new MenuBarItem("_Help", new MenuItem[]

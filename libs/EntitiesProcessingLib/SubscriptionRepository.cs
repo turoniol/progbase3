@@ -36,7 +36,7 @@ namespace EntitiesProcessingLib.Repositories
 
             command.Parameters.AddWithValue("$user_id", userID);
             command.Parameters.AddWithValue("$course_id", courseID);
-            long ID = (long) command.ExecuteScalar();
+            long ID = (long)command.ExecuteScalar();
 
             return ID;
         }
@@ -52,14 +52,15 @@ namespace EntitiesProcessingLib.Repositories
             ";
             command.Parameters.AddWithValue("$course_id", courseID);
             command.Parameters.AddWithValue("$user_id", userID);
-            
+
             SqliteDataReader reader = command.ExecuteReader();
-            Subscription subs = null; 
+            Subscription subs = null;
 
             if (reader.Read())
             {
-                
-                subs = new Subscription {
+
+                subs = new Subscription
+                {
                     id = long.Parse(reader.GetString(0)),
                     userID = long.Parse(reader.GetString(1)),
                     courseID = long.Parse(reader.GetString(0)),
@@ -76,7 +77,7 @@ namespace EntitiesProcessingLib.Repositories
         {
             _connection.Open();
             var command = _connection.CreateCommand();
-            command.CommandText = 
+            command.CommandText =
             @"
                 UPDATE users_courses 
                 SET 
@@ -87,13 +88,13 @@ namespace EntitiesProcessingLib.Repositories
             command.Parameters.AddWithValue("$id", id);
             command.Parameters.AddWithValue("$user_id", subs.userID);
             command.Parameters.AddWithValue("$course_id", subs.courseID);
-            
+
             int count = command.ExecuteNonQuery();
-            _connection.Close();            
+            _connection.Close();
 
             return count == 1;
         }
-    
+
         public bool Delete(long id)
         {
             _connection.Open();
@@ -102,7 +103,7 @@ namespace EntitiesProcessingLib.Repositories
             command.Parameters.AddWithValue("$id", id);
             int count = command.ExecuteNonQuery();
             _connection.Close();
-            
+
             return count == 1;
         }
 
@@ -164,5 +165,72 @@ namespace EntitiesProcessingLib.Repositories
 
             return listeners;
         }
+
+        public List<Lecture> GetPageBySybcriber(int pageNumber, int pageSize, string theme, long subscriberID)
+        {
+            _connection.Open();
+            var command = _connection.CreateCommand();
+
+            command.CommandText = @"
+                SELECT lectures.id, lectures.theme, lectures.course_id, lectures.imported
+                FROM users_courses, lectures
+                WHERE lectures.theme LIKE '%' || $value || '%' AND
+                    users_courses.user_id = $id AND
+                    users_courses.course_id = lectures.course_id;
+                            LIMIT $page_size OFFSET $page_number;
+            ";
+            command.Parameters.AddWithValue("$page_size", pageSize);
+            command.Parameters.AddWithValue("$page_number", (pageNumber - 1) * pageSize);
+            command.Parameters.AddWithValue("$value", theme);
+            command.Parameters.AddWithValue("$id", subscriberID);
+
+            var reader = command.ExecuteReader();
+            List<Lecture> lectures = new List<Lecture>();
+            while (reader.Read())
+            {
+                lectures.Add(
+                    new Lecture
+                    {
+                        ID = long.Parse(reader.GetString(0)),
+                        Theme = reader.GetString(1),
+                        Course = new Course
+                        {
+                            ID = long.Parse(reader.GetString(2))
+                        },
+                        IsImported = bool.Parse(reader.GetString(3)),
+                    }
+                );
+            }
+            reader.Close();
+            _connection.Close();
+
+            return lectures;
+        }
+
+        public int GetTotalPagesCount(int pageSize, string theme, long subscriberID)
+        {
+            return (int)System.Math.Ceiling(GetTotalCount(theme, subscriberID) / (float)pageSize);
+        }
+
+        public long GetTotalCount(string theme, long subscriberID)
+        {
+            _connection.Open();
+            var command = _connection.CreateCommand();
+
+            command.CommandText = @"
+                SELECT COUNT(*) FROM users_courses, lectures
+                WHERE lectures.theme LIKE '%' || $value || '%' AND
+                    users_courses.user_id = $id AND
+                    users_courses.course_id = lectures.course_id;
+            ";
+            command.Parameters.AddWithValue("$value", theme);
+            command.Parameters.AddWithValue("$id", subscriberID);
+
+            long count = (long)command.ExecuteScalar();
+            _connection.Close();
+
+            return count;
+        }
+
     }
 }

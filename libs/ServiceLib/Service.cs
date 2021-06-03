@@ -80,24 +80,7 @@ namespace ServiceLib
                 return _lectureRep.GetPage(pageNumber, pageSize, theme);
             }
 
-            if (GetTotalPagesCountLecture(pageSize, theme, subscriberID) == 0)
-            {
-                return new List<Lecture>();
-            }
-
-            if (pageNumber < 1 || pageNumber > GetTotalPagesCountLecture(pageSize, theme, subscriberID))
-            {
-                throw new System.ArgumentException();
-            }
-
-            var courses = _subRep.GetCoursesByListener(subscriberID);
-            var lectures = GetLecturesFromCourses(courses);
-
-            int offset = (pageNumber - 1) * pageSize;
-            int len = lectures.Count;
-            pageSize = len - offset > pageSize ? pageSize : len - offset;
-
-            return lectures.GetRange(offset, pageSize);
+            return _subRep.GetPageBySybcriber(pageNumber, pageSize, theme, subscriberID);
         }
 
         public List<User> GetPageUser(int pageNumber, int pageSize, string login)

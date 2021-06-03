@@ -144,7 +144,8 @@ namespace EntitiesProcessingLib.Repositories
             var command = _connection.CreateCommand();
 
             command.CommandText = @"
-                SELECT COUNT(*) FROM lectures WHERE theme LIKE '%' || $value || '%';
+                SELECT COUNT(*) FROM lectures
+                WHERE theme LIKE '%' || $value || '%';
             ";
             command.Parameters.AddWithValue("$value", theme);
 
@@ -161,7 +162,7 @@ namespace EntitiesProcessingLib.Repositories
 
             command.CommandText = @"
                 SELECT * FROM lectures
-                WHERE theme LIKE '%' || $value || '%'
+                WHERE theme LIKE '%' || $value || '%' 
                 LIMIT $page_size OFFSET $page_number;
             ";
             command.Parameters.AddWithValue("$page_size", pageSize);
